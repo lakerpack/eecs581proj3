@@ -33,6 +33,7 @@
     background-color: #e6d5ff;
     border-radius: 2px;
     position: relative;
+    cursor: pointer;
 }
 
 .volume-slider-fill {

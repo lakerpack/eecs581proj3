@@ -1,8 +1,11 @@
 import './Player.css'
 import PlayerControls from './PlayerControls'
 import ProgressBar from './ProgressBar'
-import defaultImage from '../../assets/default.png'
+import VolumeControl from './VolumeControl'
+
 import { useState } from 'react'
+
+import defaultImage from '../../assets/default.png'
 
 function Player() {
   const [isPlaying, setIsPlaying] = useState(false);
@@ -19,7 +22,10 @@ function Player() {
           <p className="artist-name">Artist name</p>
         </div>
       </div>
-      <ProgressBar isPlaying={isPlaying} />
+      <div className='controls-container'>
+        <ProgressBar isPlaying={isPlaying} />
+        <VolumeControl/>
+      </div>
       <PlayerControls isPlaying={isPlaying} setIsPlaying={setIsPlaying} />
     </div>
   );
