@@ -16,6 +16,7 @@
     width: 300px;
     height: 300px;
     border-radius: 4px;
+    opacity: 90%;
 }
 
 .song-title {
@@ -25,9 +26,9 @@
 }
 
 .artist-name {
-    font-size: 14px;
+    font-size: 13px;
     color: #9d67cd;
-    margin: 0;
+    margin: 0px 0px 5px;
 }
 
 .controls-container {
