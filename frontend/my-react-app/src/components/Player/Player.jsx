@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import './Player.css'
+
 import playButtonLogo from '../../assets/playbutton.svg'
 import stopButtonLogo from '../../assets/stopbutton.svg'
 import previousButtonLogo from '../../assets/previousbutton.svg'
@@ -12,22 +14,20 @@ function Player() {
     };
   
     return (
-      <div>
-        <div>
-          <button>
-            <img src={previousButtonLogo}/>
+      <div className="player">
+        <div className="player-controls">
+          <button className="control-button">
+            <img src={previousButtonLogo} className="control-icon"/>
           </button>
-  
-          <button onClick={togglePlayPause}>
+          <button className="control-button play-button" onClick={togglePlayPause}>
             {isPlaying ? (
-              <img src={stopButtonLogo}/>
+              <img src={stopButtonLogo} className="control-icon" />
             ) : (
-              <img src={playButtonLogo}/>
+              <img src={playButtonLogo} className="control-icon" />
             )}
           </button>
-  
-          <button>
-            <img src={nextButtonLogo}/>
+          <button className="control-button">
+            <img src={nextButtonLogo} className="control-icon" />
           </button>
         </div>
       </div>
