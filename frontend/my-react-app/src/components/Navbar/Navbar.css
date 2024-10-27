@@ -1,11 +1,11 @@
 .navbar {
     width: 100%;
-    height: 50px;  
-    background-color: white; 
+    height: 40px;  
+    background-color: #f8f8f8;  
     position: fixed; 
     top: 0;
     left: 0;
-    box-shadow: 0 4px 5px 0 rgb(0 0 0/3%)
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
 }
   
 .navbar-container {
@@ -18,4 +18,6 @@
   
 #navbar-logo {
     height: 30px;  
+    filter: invert(32%) sepia(8%) saturate(2847%) hue-rotate(314deg) brightness(87%) contrast(88%);
+
 }
