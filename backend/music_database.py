@@ -5,7 +5,7 @@ metadata of the music files for use in other functions and to have a library of 
 for the implementation of the music player. Creates a database and has functions needed for
 adding songs and deleting songs.
 Other Sources: ChatGPT, https://github.com/ahmedheakl/Music_Player_App_Using_Tkinter_MySQL/tree/main
-Author(s): Nathan Bui, Jaret Priddy
+Author(s): Nathan Bui, Jaret Priddy, Justin Owolabi
 Creation Date: 10/23/2024
 """
 
@@ -206,10 +206,34 @@ def remove_from_queue(position: int): # (Ja) function tha removes a song from th
     con.commit()
     cur.close()
 
+def get_from_queue(): #(Jo) will retrieve the current queue
+    cur = con.cursor()
+    cur.execute(''' SELECT queue.position, song.name FROM queue
+                JOIN songs ON queue.song_id = song.id
+                ORDER BY  queue.position ASC''')
+    queue = cur.fetchall()
+    cur.close()
+    return queue
+
 def main():  # (N) simple function that is creating the database and adding the songs from the default path (Music directory contained in the repository)
     print("adding songs to database")
     create_table()
     add_Dir()
 
+    cur = con.cursor()
+    cur.execute("SELECT name FROM songs")
+    song_names = [row[0] for row in cur.fetchall()]
+    cur.close()
+    print(f"Added {len(song_names)} songs to the database.")
+    if song_names: # (Jo) Adds songs to the queue
+        add_to_queue(song_names[0])  
+        add_to_queue(song_names[1] if len(song_names) > 1 else song_names[0]) 
+        print("Current Queue after adding songs:", get_from_queue())
+        remove_from_queue(1)
+        print("Updated Queue after removal:", get_from_queue())
+    else:
+        print("No songs were found in the specified directory.")
+        
+    con.close()
 
 main()
