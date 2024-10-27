@@ -77,6 +77,11 @@ def create_table():
             );
             INSERT OR IGNORE INTO artists(id,name) VALUES (0,'UNKNOWN');
             INSERT OR IGNORE INTO albums(id,name) VALUES (0,"UNKNOWN");
+            
+            CREATE TABLE IF NOT EXISTS queue (
+                position INTEGER PRIMARY KEY AUTOINCREMENT,
+                song_id INTEGER,
+                FOREIGN KEY (song_id) REFERENCES songs(id) ON DELETE CASCADE
             ''')
 
     con.commit()
@@ -180,7 +185,26 @@ def clear_table():  # (N) clears the database by dropping all the tables in the 
                         DROP TABLE IF EXISTS albums;''')
     con.commit()
     cur.close()
+    
+def add_to_queue(song_name: str): # (Ja) function that adds a song to the queue by its name
+    cur = con.cursor()
+    cur.execute("SELECT id FROM songs WHERE name = ?", (song_name,)) # (Ja) query for the song id using the song's name
+    song = cur.fetchone()
+    
+    if song:
+        song_id = song[0] # (Ja) extract the song id from the fetched result
+        cur.execute("INSERT INTO queue (song_id) VALUES (?)", (song_id,)) # (Ja) insert the song id into the queue table
+        con.commit()
+    else:
+        print(f" Song: '{song_name}', was not found in the library.") # (Ja) print a message if the songs not found
+        
+    cur.close()
 
+def remove_from_queue(position: int): # (Ja) function tha removes a song from the queue based on its position
+    cur = con.cursor()
+    cur.execute("DELETE FROM queue WHERE position =?", (position,)) # (Ja) delete the song at the specified position in the queue
+    con.commit()
+    cur.close()
 
 def main():  # (N) simple function that is creating the database and adding the songs from the default path (Music directory contained in the repository)
     print("adding songs to database")
