@@ -5,7 +5,7 @@ metadata of the music files for use in other functions and to have a library of 
 for the implementation of the music player. Creates a database and has functions needed for
 adding songs and deleting songs.
 Other Sources: ChatGPT, https://github.com/ahmedheakl/Music_Player_App_Using_Tkinter_MySQL/tree/main
-Author(s): Nathan Bui
+Author(s): Nathan Bui, Jaret Priddy
 Creation Date: 10/23/2024
 """
 
