@@ -1,11 +1,12 @@
 import earphoneLogo from '../../assets/earphone.svg'
+import './Navbar.css'
 
 function Navbar() {
     let icon = earphoneLogo
     return (
-      <nav>
-        <div>
-          <img src={icon}/>
+      <nav className="navbar">
+        <div className="navbar-container">
+          <img src={icon} id="navbar-logo"/>
         </div>
       </nav>
     );
