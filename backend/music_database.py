@@ -5,7 +5,7 @@ metadata of the music files for use in other functions and to have a library of 
 for the implementation of the music player. Creates a database and has functions needed for
 adding songs and deleting songs.
 Other Sources: ChatGPT, https://github.com/ahmedheakl/Music_Player_App_Using_Tkinter_MySQL/tree/main
-Author(s): Nathan Bui, Jaret Priddy
+Author(s): Nathan Bui, Jaret Priddy, Justin Owolabi
 Creation Date: 10/23/2024
 """
 
@@ -206,10 +206,59 @@ def remove_from_queue(position: int): # (Ja) function tha removes a song from th
     con.commit()
     cur.close()
 
+def get_from_queue(): #(Jo) will retrieve the current queue
+    cur = con.cursor()
+    cur.execute(''' SELECT queue.position, song.name FROM queue
+                JOIN songs ON queue.song_id = song.id
+                ORDER BY  queue.position ASC''')
+    queue = cur.fetchall()
+    cur.close()
+    return queue
+    
+def get_current_song():
+    cur = con.cursor()
+    # (Ja) execute SQL query to get the first song in the queue, joining the songs, artists and albums tables to retrieve full metadata
+    cur.execute('''SELECT songs.name, artists.name, albums.name, songs.length, songs.path
+                   FROM queue
+                   JOIN songs ON queue.song_id = songs.id
+                   LEFT JOIN artists ON songs.artist_id = artists.id
+                   LEFT JOIN albums ON songs.album_id = album.id
+                   ORDER BY queue.position ASC LIMIT 1;''')
+    # (Ja) fetches first song in queue, if it exists
+    current_song = cur.fetchone()
+    cur.close()
+    
+    # (Ja) if the song is retrieved from the query, return its details
+    if current_song:
+        return {
+            "title": current_song[0] or "Unknown Title",
+            "artist": current_song[1] or "Unknown Artist",
+            "album": current_song[2] or "Unknown Album",
+            "length": current_song[3] or "Unknow Length",
+            "path": current_song[4]
+        }
+        # (Ja) if there's no songs in the queue return None
+        return None
+
 def main():  # (N) simple function that is creating the database and adding the songs from the default path (Music directory contained in the repository)
     print("adding songs to database")
     create_table()
     add_Dir()
 
+    cur = con.cursor()
+    cur.execute("SELECT name FROM songs")
+    song_names = [row[0] for row in cur.fetchall()]
+    cur.close()
+    print(f"Added {len(song_names)} songs to the database.")
+    if song_names: # (Jo) Adds songs to the queue
+        add_to_queue(song_names[0])  
+        add_to_queue(song_names[1] if len(song_names) > 1 else song_names[0]) 
+        print("Current Queue after adding songs:", get_from_queue())
+        remove_from_queue(1)
+        print("Updated Queue after removal:", get_from_queue())
+    else:
+        print("No songs were found in the specified directory.")
+        
+    con.close()
 
 main()
