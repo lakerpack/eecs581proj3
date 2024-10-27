@@ -5,6 +5,7 @@
     position: fixed; 
     top: 0;
     left: 0;
+    box-shadow: 0 4px 5px 0 rgb(0 0 0/3%)
 }
   
 .navbar-container {
