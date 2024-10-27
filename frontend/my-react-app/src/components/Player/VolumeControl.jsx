@@ -10,6 +10,7 @@ function VolumeControl() {
     const [isSliderVisible, setIsSliderVisible] = useState(false);
     const [isDragging, setIsDragging] = useState(false);
     const sliderRef = useRef(null);
+    const volumeRef = useRef(100);
 
     const getVolumeIcon = () => {
         if (volume === 0) return volumeMuteIcon;
@@ -29,6 +30,7 @@ function VolumeControl() {
             const width = rect.width;
             const percentage = Math.min(Math.max((x / width) * 100, 0), 100);
             setVolume(Math.round(percentage));
+            volumeRef.current = volume;
         }
     };
 
@@ -38,9 +40,10 @@ function VolumeControl() {
 
     const toggleMute = () => {
         if (volume > 0) {
+            volumeRef.current = volume;
             setVolume(0);
         } else {
-            setVolume(100);
+            setVolume(volumeRef.current);
         }
     };
 
