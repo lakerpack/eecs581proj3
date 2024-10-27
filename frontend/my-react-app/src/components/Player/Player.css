@@ -1,27 +1,27 @@
 .player {
     padding: 20px;
-    background-color: #fff0f5;  
+    background-color: #fff0f5;
     border-radius: 8px;
     box-shadow: 1px 2px 3px rgba(255, 182, 193, 0.45);
 }
-  
+
 .player-info {
     margin-bottom: 20px;
     gap: 15px;
 }
-  
+
 .album-cover {
     width: 300px;
     height: 300px;
     border-radius: 4px;
 }
-  
+
 .song-title {
     font-size: 16px;
     font-weight: 600;
     margin: 0;
 }
-  
+
 .artist-name {
     font-size: 14px;
     color: #9d67cd;
