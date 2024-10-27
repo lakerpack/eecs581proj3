@@ -58,9 +58,9 @@ function ProgressBar({ isPlaying }) {
     }, [isDragging]);
 
     return (
-        <div ref={progressRef} onMouseDown={handleMouseDown}>
-            <div style={{ width: `${progress}%` }} />
-            <div style={{ left: `${progress}%` }} />
+        <div className="progress-bar" ref={progressRef} onMouseDown={handleMouseDown}>
+            <div className="progress-fill" style={{ width: `${progress}%` }} />
+            <div className="progress-indicator" style={{ left: `${progress}%` }} />
         </div>
     );
 }

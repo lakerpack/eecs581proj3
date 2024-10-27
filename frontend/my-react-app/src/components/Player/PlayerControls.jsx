@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import './PlayerControls.css'
 
 import playButtonLogo from '../../assets/playbutton.svg'
