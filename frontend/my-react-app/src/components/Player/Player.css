@@ -36,6 +36,7 @@
     align-items: center;
     flex-direction: center;
     width: 100%;
+    gap: -5px;
 }
 
 .time-display {
@@ -47,5 +48,6 @@
 }
 
 .left {
-    margin-right: -10px;
+    margin-right: -5px;
+    margin-left: 10px;
 }
