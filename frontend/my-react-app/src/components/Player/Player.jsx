@@ -23,37 +23,75 @@ function Player() {
     const fetchSong = async () => {
       try {
         const response = await fetch(apiUrl);
-        if (!response.ok) {
-          throw new Error('Failed to fetch song data');
-        }
         const data = await response.json();
-        // console.log(data)
-        setSongData(data);
+        const filename = data.path.split('\\').pop();  
+        const audioUrl = `http://127.0.0.1:5000/api/audio/${filename}`;
+
+        setSongData({
+          ...data,
+          audioUrl: audioUrl
+        });
+
+        audioRef.current.src = audioUrl;
       } catch (err) {
         console.error(err);
       }
     };
-
     fetchSong();
   }, []);
 
 
   useEffect(() => {
     const audio = audioRef.current;
+
     const setAudioData = () => {
       setDuration(audio.duration);
       setCurrentTime(audio.currentTime);
     };
+
     const setTimeUpdate = () => {
       setCurrentTime(audio.currentTime);
     };
+
     audio.addEventListener('loadeddata', setAudioData);
     audio.addEventListener('timeupdate', setTimeUpdate);
+
     return () => {
       audio.removeEventListener('loadeddata', setAudioData);
       audio.removeEventListener('timeupdate', setTimeUpdate);
     };
   }, []);
+
+  useEffect(() => {
+    if (songData) {
+      audioRef.current.src = songData.audioUrl;
+    }
+  }, [songData]);
+
+  useEffect(() => {
+    if (isPlaying) {
+      audioRef.current.play();
+    } else {
+      audioRef.current.pause();
+    }
+  }, [isPlaying]);
+
+  const handleVolumeChange = (newVolume) => {
+    setVolume(newVolume);
+    audioRef.current.volume = newVolume;
+  };
+
+  const handleTimeUpdate = (newTime) => {
+    audioRef.current.currentTime = newTime;
+    setCurrentTime(newTime);
+  };
+
+  const formatTime = (time) => {
+    const minutes = Math.floor(time / 60);
+    const seconds = Math.floor(time % 60);
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  };
+
 
   return (
     <div className="player">

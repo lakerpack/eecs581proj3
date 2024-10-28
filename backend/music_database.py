@@ -22,7 +22,7 @@ of python3 by default
 !!!A LOT OF THE PROGRAM WAS TAKEN FROM THE GITHUB PROJECT LISTED AS A SOURCE, WITH SOME MODIFICATIONS
 MADE TO IT BY AUTHORS AND SOME ERROR CHECKING WITH CHATGPT!!!
 '''
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, send_file
 from flask_cors import CORS
 import os
 import sqlite3 as sql
@@ -312,9 +312,14 @@ def get_current_song():
             "path": current_song[4]
         }), 200
     else:
-        # (Ja) if there's no songs in the queue return None
+        # (Ja) if there's no songs in the queue return None 
         return jsonify({"message": "No songs in the queue!"}), 404
 
+@app.route('/api/audio/<path:filename>')
+def serve_audio(filename):
+    music_folder = 'C:\\Users\\User\\Desktop\\school.work\\581\\eecs581proj3\\backend'
+    file_path = os.path.join(music_folder, filename)
+    return send_file(file_path)
 
 def main():  # (N) simple function that is creating the database and adding the songs from the default path (Music directory contained in the repository)
     print("adding songs to database")
