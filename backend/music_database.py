@@ -15,7 +15,8 @@ Creation Date: 10/23/2024
 -os is needed for getting file paths
 -sqlite3 is needed for the creation of the actual database
 -tinytag is used for extracting the relevant metadata from a song file when given a path
-the only one included in the requirements.txt file is tinytag since os and sqlite3 are part 
+-random is for randomly generating stuff
+the only one included in the requirements.txt file are tinytag and flask since the others are part 
 of python3 by default
 
 !!!A LOT OF THE PROGRAM WAS TAKEN FROM THE GITHUB PROJECT LISTED AS A SOURCE, WITH SOME MODIFICATIONS
@@ -25,6 +26,7 @@ from flask import Flask, jsonify, request
 import os
 import sqlite3 as sql
 from tinytag import TinyTag
+from random import random
 
 app = Flask(__name__)
 
@@ -32,8 +34,10 @@ app = Flask(__name__)
 db_path = os.path.dirname(
     __file__) + '/music_library.db'  # (N) takes the path of the current file plus the name of the .db file
 
+
 def get_db_connection():
     return sql.connect(db_path)  # (N) creates the db with that path
+
 
 '''
 (N) function in charge of creating the tables in the database that will store the info of artists, albums, and songs
@@ -161,6 +165,8 @@ print(music_directory)
 (N) function in charge of adding music_files from an entire directory into the database. 
 Referenced from the github repository in references
 '''
+
+
 def add_Dir(music_dir: str = music_directory):
     # (N) making sure the path to the directory with music stored is a valid path
     if not os.path.isdir(music_dir):
@@ -169,12 +175,16 @@ def add_Dir(music_dir: str = music_directory):
     # (N) initializing a counter for the number of files that will be added
     n = 0
     names = []
-    for file_ in os.listdir(music_dir):  # (N) iterating through all of the files that are contained in the music directory that we are looking at
-        if file_.split('.')[-1] in ["mp3"]:  # (N) right now we are only looking at .mp3 files so we are only looking for files with that extension
+    for file_ in os.listdir(
+            music_dir):  # (N) iterating through all of the files that are contained in the music directory that we are looking at
+        if file_.split('.')[-1] in [
+            "mp3"]:  # (N) right now we are only looking at .mp3 files so we are only looking for files with that extension
             n += 1
             print(f'Adding song from: {music_dir}/{file_}')
-            name, _ = add_Song(music_dir + '/' + file_)  # (N) using the add_Song function to add the song using the path of the music file
-            names.append(name)  # (N) adding the name of the song that was added to a list of names to keep track of songs added
+            name, _ = add_Song(
+                music_dir + '/' + file_)  # (N) using the add_Song function to add the song using the path of the music file
+            names.append(
+                name)  # (N) adding the name of the song that was added to a list of names to keep track of songs added
 
     return n, names  # (N) return the number of songs and the names of the songs that were addes
 
@@ -182,7 +192,8 @@ def add_Dir(music_dir: str = music_directory):
 def deleteSong(song_name: str):  # (N) Function that deletes a song from the database
     con = get_db_connection()
     cur = con.cursor()
-    cur.executescript(f'DELETE FROM songs WHERE name = "{song_name}";')  # (N) simple SQL query where it matches the song name and deletes entries based on that
+    cur.executescript(
+        f'DELETE FROM songs WHERE name = "{song_name}";')  # (N) simple SQL query where it matches the song name and deletes entries based on that
     con.commit()
     cur.close()
 
@@ -196,29 +207,34 @@ def clear_table():  # (N) clears the database by dropping all the tables in the 
     con.commit()
     cur.close()
 
-def add_to_queue(song_name: str): # (Ja) function that adds a song to the queue by its name
+
+def add_to_queue(song_name: str):  # (Ja) function that adds a song to the queue by its name
     con = get_db_connection()
     cur = con.cursor()
-    cur.execute("SELECT id FROM songs WHERE name = ?", (song_name,)) # (Ja) query for the song id using the song's name
+    cur.execute("SELECT id FROM songs WHERE name = ?", (song_name,))  # (Ja) query for the song id using the song's name
     song = cur.fetchone()
 
     if song:
-        song_id = song[0] # (Ja) extract the song id from the fetched result
-        cur.execute("INSERT INTO queue (song_id) VALUES (?)", (song_id,)) # (Ja) insert the song id into the queue table
+        song_id = song[0]  # (Ja) extract the song id from the fetched result
+        cur.execute("INSERT INTO queue (song_id) VALUES (?)",
+                    (song_id,))  # (Ja) insert the song id into the queue table
         con.commit()
     else:
-        print(f" Song: '{song_name}', was not found in the library.") # (Ja) print a message if the songs not found
+        print(f" Song: '{song_name}', was not found in the library.")  # (Ja) print a message if the songs not found
 
     cur.close()
 
-def remove_from_queue(position: int): # (Ja) function tha removes a song from the queue based on its position
+
+def remove_from_queue(position: int):  # (Ja) function tha removes a song from the queue based on its position
     con = get_db_connection()
     cur = con.cursor()
-    cur.execute("DELETE FROM queue WHERE position =?", (position,)) # (Ja) delete the song at the specified position in the queue
+    cur.execute("DELETE FROM queue WHERE position =?",
+                (position,))  # (Ja) delete the song at the specified position in the queue
     con.commit()
     cur.close()
 
-def get_from_queue(): #(Jo) will retrieve the current queue
+
+def get_from_queue():  # (Jo) will retrieve the current queue
     con = get_db_connection()
     cur = con.cursor()
     cur.execute(''' SELECT queue.position, songs.name FROM queue
@@ -227,7 +243,45 @@ def get_from_queue(): #(Jo) will retrieve the current queue
     queue = cur.fetchall()
     cur.close()
     return queue
-@app.route("/api/current_song",methods=["GET"]) # (N) api endpoint that gets information related to the currently playing song in the queue
+
+
+@app.route("/api/random_song", methods=["POST"])
+def get_random_song():
+    con = get_db_connection()
+    cur = con.cursor()
+    cur.execute("SELECT id FROM songs")
+    song_ids = [row[0] for row in cur.fetchall()]
+
+    if song_ids:
+        random_song_id = random.choice(song_ids)
+        cur.execute("INSERT INTO queue (song_id) VALUES (?)", (random_song_id,))
+        con.commit()
+
+    cur.execute('''SELECT songs.name, artists.name AS artist, albums.name AS album, 
+                                  songs.length, songs.path 
+                           FROM songs
+                           LEFT JOIN artists ON songs.artist_id = artists.id
+                           LEFT JOIN albums ON songs.album_id = albums.id
+                           WHERE songs.id = ?''', (random_song_id,))
+
+    song_details = cur.fetchone()
+    cur.close()
+    con.close()
+
+    if song_details:
+        return jsonify({
+            "title": song_details[0] or "Unknown Title",
+            "artist": song_details[1] or "Unknown Artist",
+            "album": song_details[2] or "Unknown Album",
+            "length": song_details[3] or "Unknown Length",
+            "path": song_details[4]
+        }), 200
+    else:
+        return jsonify({"error": "No songs found"}), 404
+
+
+@app.route("/api/current_song",
+           methods=["GET"])  # (N) api endpoint that gets information related to the currently playing song in the queue
 def get_current_song():
     con = get_db_connection()
     cur = con.cursor()
@@ -236,7 +290,7 @@ def get_current_song():
                    FROM queue
                    JOIN songs ON queue.song_id = songs.id
                    LEFT JOIN artists ON songs.artist_id = artists.id
-                   LEFT JOIN albums ON songs.album_id = album.id
+                   LEFT JOIN albums ON songs.album_id = albums.id
                    ORDER BY queue.position ASC LIMIT 1;''')
     # (Ja) fetches first song in queue, if it exists
     current_song = cur.fetchone()
@@ -251,10 +305,11 @@ def get_current_song():
             "album": current_song[2] or "Unknown Album",
             "length": current_song[3] or "Unknow Length",
             "path": current_song[4]
-        })
+        }), 200
     else:
         # (Ja) if there's no songs in the queue return None
-        return jsonify({"message": "No songs in the queue!"})
+        return jsonify({"message": "No songs in the queue!"}), 404
+
 
 def main():  # (N) simple function that is creating the database and adding the songs from the default path (Music directory contained in the repository)
     print("adding songs to database")
@@ -267,7 +322,7 @@ def main():  # (N) simple function that is creating the database and adding the 
     song_names = [row[0] for row in cur.fetchall()]
     cur.close()
     print(f"Added {len(song_names)} songs to the database.")
-    if song_names: # (Jo) Adds songs to the queue
+    if song_names:  # (Jo) Adds songs to the queue
         add_to_queue(song_names[0])
         add_to_queue(song_names[1] if len(song_names) > 1 else song_names[0])
         print("Current Queue after adding songs:", get_from_queue())
@@ -277,5 +332,6 @@ def main():  # (N) simple function that is creating the database and adding the 
         print("No songs were found in the specified directory.")
 
     con.close()
+
 
 main()
