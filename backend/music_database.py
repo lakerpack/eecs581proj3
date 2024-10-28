@@ -209,8 +209,8 @@ def remove_from_queue(position: int): # (Ja) function tha removes a song from th
 
 def get_from_queue(): #(Jo) will retrieve the current queue
     cur = con.cursor()
-    cur.execute(''' SELECT queue.position, song.name FROM queue
-                JOIN songs ON queue.song_id = song.id
+    cur.execute(''' SELECT queue.position, songs.name FROM queue
+                JOIN songs ON queue.song_id = songs.id
                 ORDER BY  queue.position ASC''')
     queue = cur.fetchall()
     cur.close()
