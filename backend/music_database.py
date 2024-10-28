@@ -245,18 +245,19 @@ def get_from_queue():  # (Jo) will retrieve the current queue
     return queue
 
 
-@app.route("/api/random_song", methods=["POST"])
-def get_random_song():
+@app.route("/api/random_song", methods=["POST"])  # (N) API endpoint for getting a random song that will be used temporarily for the forward and backward buttons
+def get_random_song():  # (N) function for getting a random song
     con = get_db_connection()
     cur = con.cursor()
-    cur.execute("SELECT id FROM songs")
+    cur.execute("SELECT id FROM songs")  # (N) get a list of every song and then select all of the song_ids from that list
     song_ids = [row[0] for row in cur.fetchall()]
 
     if song_ids:
-        random_song_id = random.choice(song_ids)
+        random_song_id = random.choice(song_ids)  # (N) grab a random song id and then add that song into the queue
         cur.execute("INSERT INTO queue (song_id) VALUES (?)", (random_song_id,))
         con.commit()
 
+    # (N) get all the relevant metadata from that song
     cur.execute('''SELECT songs.name, artists.name AS artist, albums.name AS album, 
                                   songs.length, songs.path 
                            FROM songs
@@ -264,11 +265,12 @@ def get_random_song():
                            LEFT JOIN albums ON songs.album_id = albums.id
                            WHERE songs.id = ?''', (random_song_id,))
 
-    song_details = cur.fetchone()
+    song_details = cur.fetchone()  # (N) add it to a variable
     cur.close()
     con.close()
 
-    if song_details:
+    if song_details:  # (N) if those details are valid use jsonify to put it into JSON format to respond to the API call
+        # (N) giving all of the information needed by the frontend
         return jsonify({
             "title": song_details[0] or "Unknown Title",
             "artist": song_details[1] or "Unknown Artist",
@@ -276,6 +278,7 @@ def get_random_song():
             "length": song_details[3] or "Unknown Length",
             "path": song_details[4]
         }), 200
+    # (N) if there was an error getting that information return an error
     else:
         return jsonify({"error": "No songs found"}), 404
 
