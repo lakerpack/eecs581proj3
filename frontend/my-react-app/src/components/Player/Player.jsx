@@ -133,12 +133,6 @@ function Player() {
   }, []);
 
   useEffect(() => {
-    if (songData) {
-      audioRef.current.src = songData.audioUrl;
-    }
-  }, [songData]);
-
-  useEffect(() => {
     if (isPlaying) {
       audioRef.current.play();
     } else {
