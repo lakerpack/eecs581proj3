@@ -15,7 +15,7 @@ function Player() {
   const [volume, setVolume] = useState(1);
 
   const audioRef = useRef(new Audio());
-  const intervalRef = useRef();
+  // const intervalRef = useRef();
 
   let apiUrl = 'http://127.0.0.1:5000/api/random_song';
 
