@@ -106,9 +106,9 @@ function Player() {
       </div>
       <div className='controls-container'>
         <span className="time-display left">{formatTime(currentTime)}</span>
-        <ProgressBar isPlaying={isPlaying} currentTime={currentTime} duration={duration} onTimeUpdate={handleTimeUpdate} />
+        <ProgressBar currentTime={currentTime} duration={duration} onTimeUpdate={handleTimeUpdate} />
         <span className="time-display right">{formatTime(duration)}</span>
-        <VolumeControl />
+        <VolumeControl volume={volume} onVolumeChange={handleVolumeChange} />
       </div>
       <PlayerControls isPlaying={isPlaying} setIsPlaying={setIsPlaying} />
     </div>

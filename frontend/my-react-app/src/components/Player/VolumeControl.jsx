@@ -5,16 +5,17 @@ import volumeHighIcon from '../../assets/volumehigh.svg';
 import volumeLowIcon from '../../assets/volumelow.svg';
 import volumeMuteIcon from '../../assets/volumemute.svg';
 
-function VolumeControl() {
-    const [volume, setVolume] = useState(100);
+function VolumeControl({volume, onVolumeChange}) {
     const [isSliderVisible, setIsSliderVisible] = useState(false);
     const [isDragging, setIsDragging] = useState(false);
     const sliderRef = useRef(null);
-    const volumeRef = useRef(100);
+    const volumeRef = useRef(1);
+
+    const volumePercentage = volume * 100;
 
     const getVolumeIcon = () => {
         if (volume === 0) return volumeMuteIcon;
-        if (volume < 30) return volumeLowIcon;
+        if (volumePercentage < 30) return volumeLowIcon;
         return volumeHighIcon;
     };
 
@@ -28,9 +29,11 @@ function VolumeControl() {
             const rect = sliderRef.current.getBoundingClientRect();
             const x = e.clientX - rect.left;
             const width = rect.width;
-            const percentage = Math.min(Math.max((x / width) * 100, 0), 100);
-            setVolume(Math.round(percentage));
-            volumeRef.current = volume;
+            const percentage = Math.min(Math.max((x / width), 0), 1);
+            onVolumeChange(Math.round(percentage));
+            if (percentage > 0) {
+                volumeRef.current = percentage;
+            }
         }
     };
 
@@ -41,9 +44,9 @@ function VolumeControl() {
     const toggleMute = () => {
         if (volume > 0) {
             volumeRef.current = volume;
-            setVolume(0);
+            onVolumeChange(0);
         } else {
-            setVolume(volumeRef.current);
+            onVolumeChange(volumeRef.current);
         }
     };
 
@@ -68,7 +71,7 @@ function VolumeControl() {
             </button>
             <div className={`volume-slider-container ${isSliderVisible ? 'visible' : ''}`}>
                 <div className="volume-slider" ref={sliderRef} onMouseDown={handleMouseDown}>
-                    <div className="volume-slider-fill" style={{ width: `${volume}%` }} />
+                    <div className="volume-slider-fill" style={{ width: `${volumePercentage }%` }} />
                 </div>
             </div>
         </div>
