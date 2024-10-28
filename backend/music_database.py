@@ -82,6 +82,7 @@ def create_table():
                 position INTEGER PRIMARY KEY AUTOINCREMENT,
                 song_id INTEGER,
                 FOREIGN KEY (song_id) REFERENCES songs(id) ON DELETE CASCADE
+            );
             ''')
 
     con.commit()
