@@ -24,7 +24,7 @@ function Player() {
       try {
         const response = await fetch(apiUrl);
         const data = await response.json();
-        const filename = data.path.split('\\').pop();  
+        const filename = data.path.split('\\').pop();
         const audioUrl = `http://127.0.0.1:5000/api/audio/${filename}`;
 
         setSongData({
@@ -92,7 +92,6 @@ function Player() {
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
-
   return (
     <div className="player">
       <div className="player-info">
@@ -106,7 +105,9 @@ function Player() {
         </div>
       </div>
       <div className='controls-container'>
-        <ProgressBar isPlaying={isPlaying} />
+        <span className="time-display left">{formatTime(currentTime)}</span>
+        <ProgressBar isPlaying={isPlaying} currentTime={currentTime} duration={duration} onTimeUpdate={handleTimeUpdate} />
+        <span className="time-display right">{formatTime(duration)}</span>
         <VolumeControl />
       </div>
       <PlayerControls isPlaying={isPlaying} setIsPlaying={setIsPlaying} />

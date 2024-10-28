@@ -33,5 +33,19 @@
 
 .controls-container {
     display: flex;
+    align-items: center;
+    flex-direction: center;
     width: 100%;
+}
+
+.time-display {
+    font-size: 12px;
+}
+
+.right {
+    margin-left: -5px;
+}
+
+.left {
+    margin-right: -10px;
 }
