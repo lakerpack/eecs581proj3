@@ -29,8 +29,8 @@ function VolumeControl({volume, onVolumeChange}) {
             const rect = sliderRef.current.getBoundingClientRect();
             const x = e.clientX - rect.left;
             const width = rect.width;
-            const percentage = Math.min(Math.max((x / width), 0), 1);
-            onVolumeChange(Math.round(percentage));
+            const percentage = Math.round(Math.min(Math.max((x / width), 0), 1) * 100) / 100;
+            onVolumeChange(percentage);
             if (percentage > 0) {
                 volumeRef.current = percentage;
             }
