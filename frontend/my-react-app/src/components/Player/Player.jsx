@@ -19,6 +19,17 @@ import { useState, useRef, useEffect } from 'react'
 
 import defaultImage from '../../assets/default.png'
 
+/*
+When creating the main Player component, we define the necessary variables to run the player.
+These variables will be passed into child components so they can change the state of the main component through their actions.
+E.g. clicking the play button in PlayerControls will use setIsPlaying to change the state of isPlaying.
+isPlaying -- running the music
+songData -- used for initializing song name, artist name, file path, and time of song
+duration -- passed in through by songData and altered for progressBar
+volume -- used by the VolumeControl to change audio volume
+songHistory and currentSongIndex are just used to keep track of what song is next/previous
+*/
+
 function Player() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [songData, setSongData] = useState(null);
@@ -33,6 +44,10 @@ function Player() {
 
   let apiUrl = 'http://127.0.0.1:5000/api/random_song';
 
+  /*
+  Fetch from the Flask backend using the apiUrl and initialize songData. 
+  Add the songData to the history and set index.
+  */
   const fetchSong = async () => {
     try {
       const response = await fetch(apiUrl);
@@ -54,6 +69,12 @@ function Player() {
     }
   };
 
+  /*
+  Handle previous songs in the history with an async function to determine
+  1. Is there a previous song?
+  2. Is the time > 2 (to prevent double clicks)
+  Then move forward by going to the previous song and playing if the music was already playing.
+  */
   const handlePrevious = async () => {
     if (currentSongIndex > 0) {
       if (currentTime > 2) {
@@ -84,6 +105,10 @@ function Player() {
     }
   };
 
+  /*
+  Similarly to handlePrevious, but instead we do another fetchSong() call to do an API call to our backend.
+  This creates a random song that we use to move on, but we have to await for it to load since it is async.
+  */
   const handleNext = async () => {
     if (currentSongIndex < songHistory.length - 1) {
       const nextSong = songHistory[currentSongIndex + 1];
@@ -108,10 +133,16 @@ function Player() {
     }
   };
 
+  /*
+  At the beginning with [] empty dependency, run fetchSong() to grab our first song when starting.
+  */
   useEffect(() => {
     fetchSong();
   }, []);
 
+  /*
+  Whenever there is a change to our index or songHistory, make sure that the music player moves forward.
+  */
   useEffect(() => {
     const audio = audioRef.current;
 
@@ -123,6 +154,10 @@ function Player() {
     return () => audio.removeEventListener('ended', handleEnded);
   }, [currentSongIndex, songHistory]);
 
+  /*
+  Initialize the audio's event listeners to account for any changes in the data or time.
+  This occurs at the beginning and doesn't need to be initialized again since it's just function setups. 
+  */
   useEffect(() => {
     const audio = audioRef.current;
 
@@ -144,6 +179,10 @@ function Player() {
     };
   }, []);
 
+  /*
+  Simple check for isPlaying. If the user clicks the play button, then it is playing so start the audio.
+  Otherwise, do the opposite.
+  */
   useEffect(() => {
     if (isPlaying) {
       audioRef.current.play();
@@ -152,6 +191,9 @@ function Player() {
     }
   }, [isPlaying]);
 
+  /*
+  Handle new changes in the volume (these will be passed into the VolumeControl component)
+  */
   const handleVolumeChange = (newVolume) => {
     setVolume(newVolume);
     audioRef.current.volume = newVolume;
@@ -162,12 +204,19 @@ function Player() {
     setCurrentTime(newTime);
   };
 
+  /*
+  Format the time, we are provided seconds through the API, but we want a more readable format. 
+  */
   const formatTime = (time) => {
     const minutes = Math.floor(time / 60);
     const seconds = Math.floor(time % 60);
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
+  /*
+  HTML or styling of the components. Will return all the HTML elements once initialized.
+  Not much logic here, but lots of building blocks for base components.
+  */
   return (
     <div className="player">
       <div className="player-info">
