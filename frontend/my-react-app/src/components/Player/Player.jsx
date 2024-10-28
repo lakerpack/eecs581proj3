@@ -63,8 +63,8 @@ function Player() {
           className="album-cover"
         />
         <div className="song-info">
-          <h3 className="song-title">Song</h3>
-          <p className="artist-name">Artist name</p>
+          <h3 className="song-title">{songData?.title}</h3>
+          <p className="artist-name">{songData?.artist}</p>
         </div>
       </div>
       <div className='controls-container'>
