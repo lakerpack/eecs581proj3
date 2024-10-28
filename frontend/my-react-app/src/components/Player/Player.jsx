@@ -13,30 +13,77 @@ function Player() {
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(1);
+  const [songHistory, setSongHistory] = useState([]);
+  const [currentSongIndex, setCurrentSongIndex] = useState(-1);
 
   const audioRef = useRef(new Audio());
   // const intervalRef = useRef();
 
   let apiUrl = 'http://127.0.0.1:5000/api/random_song';
 
-  useEffect(() => {
-    const fetchSong = async () => {
-      try {
-        const response = await fetch(apiUrl);
-        const data = await response.json();
-        const filename = data.path.split('\\').pop();
-        const audioUrl = `http://127.0.0.1:5000/api/audio/${filename}`;
+  const fetchSong = async () => {
+    try {
+      const response = await fetch(apiUrl);
+      const data = await response.json();
+      const filename = data.path.split('\\').pop();
+      const audioUrl = `http://127.0.0.1:5000/api/audio/${filename}`;
 
-        setSongData({
-          ...data,
-          audioUrl: audioUrl
-        });
+      setSongData({
+        ...data,
+        audioUrl: audioUrl
+      });
 
-        audioRef.current.src = audioUrl;
-      } catch (err) {
-        console.error(err);
+      setSongHistory(prev => [...prev.slice(0, currentSongIndex + 1), data]);
+      setCurrentSongIndex(prev => prev + 1);
+
+      audioRef.current.src = audioUrl;
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handlePrevious = () => {
+    if (currentSongIndex > 0) {
+      const previousSong = songHistory[currentSongIndex - 1];
+      const filename = previousSong.path.split('\\').pop();
+      const audioUrl = `http://127.0.0.1:5000/api/audio/${filename}`;
+
+      setSongData({
+        ...previousSong,
+        audioUrl: audioUrl
+      });
+
+      setCurrentSongIndex(prev => prev - 1);
+      audioRef.current.src = audioUrl;
+      if (isPlaying) {
+        audioRef.current.play();
       }
-    };
+    }
+  };
+
+  const handleNext = () => {
+    if (currentSongIndex < songHistory.length - 1) {
+      const nextSong = songHistory[currentSongIndex + 1];
+      const filename = nextSong.path.split('\\').pop();
+      const audioUrl = `http://127.0.0.1:5000/api/audio/${filename}`;
+
+      setSongData({
+        ...nextSong,
+        audioUrl: audioUrl
+      });
+
+      setCurrentSongIndex(prev => prev + 1);
+      audioRef.current.src = audioUrl;
+    } else {
+      fetchSong();
+    }
+
+    if (isPlaying) {
+      audioRef.current.play();
+    }
+  };
+
+  useEffect(() => {
     fetchSong();
   }, []);
 
@@ -110,7 +157,7 @@ function Player() {
         <span className="time-display right">{formatTime(duration)}</span>
         <VolumeControl volume={volume} onVolumeChange={handleVolumeChange} />
       </div>
-      <PlayerControls isPlaying={isPlaying} setIsPlaying={setIsPlaying} />
+      <PlayerControls isPlaying={isPlaying} setIsPlaying={setIsPlaying} onPrevious={handlePrevious} onNext={handleNext} />
     </div>
   );
 }
