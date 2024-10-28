@@ -1,3 +1,15 @@
+/*
+Artifact(s): Play Button, Stop Button, Next Button, Prev Button, Progress Bar, Volume Button, Artist Name, Song Title
+Description: React component that's built up of multiple components to provide the complete music player that can run independently. 
+Name: Anil Thapa
+Date: 10/26/2024
+Revised: 10/27/2024 (Integrating with Backend -- Anil)
+Preconditions: N/A
+Postconditions: Provides an interface for music
+Error and exception conditions: Mistakes in the backend
+Side effects: N/A
+*/
+
 import './Player.css'
 import PlayerControls from './PlayerControls'
 import ProgressBar from './ProgressBar'

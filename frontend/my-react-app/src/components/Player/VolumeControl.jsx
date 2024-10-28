@@ -1,3 +1,15 @@
+/*
+Artifact(s): Volume Button
+Description: React component that modifies the volume of the audio being played.
+Name: Anil Thapa, Michelle Chen
+Date: 10/26/2024
+Revised: 10/27/2024 (Integrating with Backend -- Anil)
+Preconditions: N/A
+Postconditions: Provides an interface for music
+Error and exception conditions: Mistakes in the backend
+Side effects: N/A
+*/
+
 import { useState, useRef, useEffect } from 'react';
 import './VolumeControl.css';
 

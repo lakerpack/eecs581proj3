@@ -1,3 +1,15 @@
+/*
+Artifact(s): Progress Bar
+Description: Shows duration and current time of the song. Can manually change the duration.
+Name: Anil Thapa
+Date: 10/26/2024
+Revised: 10/27/2024 (Integrating with Backend -- Anil)
+Preconditions: N/A
+Postconditions: Provides an interface for music
+Error and exception conditions: Mistakes in the backend
+Side effects: N/A
+*/
+
 import { useState, useEffect, useRef } from 'react'
 import './ProgressBar.css'
 
