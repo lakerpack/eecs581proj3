@@ -23,12 +23,14 @@ of python3 by default
 MADE TO IT BY AUTHORS AND SOME ERROR CHECKING WITH CHATGPT!!!
 '''
 from flask import Flask, jsonify, request
+from flask_cors import CORS
 import os
 import sqlite3 as sql
 from tinytag import TinyTag
-from random import random
+import random
 
 app = Flask(__name__)
+CORS(app)
 
 # (N) this specifies the path for the music_library.db fill that will contain the database
 db_path = os.path.dirname(
@@ -245,7 +247,7 @@ def get_from_queue():  # (Jo) will retrieve the current queue
     return queue
 
 
-@app.route("/api/random_song", methods=["POST"])  # (N) API endpoint for getting a random song that will be used temporarily for the forward and backward buttons
+@app.route("/api/random_song", methods=["GET"])  # (N) API endpoint for getting a random song that will be used temporarily for the forward and backward buttons
 def get_random_song():  # (N) function for getting a random song
     con = get_db_connection()
     cur = con.cursor()
