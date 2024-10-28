@@ -77,7 +77,6 @@ function Player() {
     } else {
       fetchSong();
     }
-
     if (isPlaying) {
       audioRef.current.play();
     }
@@ -87,6 +86,16 @@ function Player() {
     fetchSong();
   }, []);
 
+  useEffect(() => {
+    const audio = audioRef.current;
+
+    const handleEnded = () => {
+      handleNext();
+    };
+
+    audio.addEventListener('ended', handleEnded);
+    return () => audio.removeEventListener('ended', handleEnded);
+  }, [currentSongIndex, songHistory]);
 
   useEffect(() => {
     const audio = audioRef.current;
