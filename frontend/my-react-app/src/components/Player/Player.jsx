@@ -42,26 +42,37 @@ function Player() {
     }
   };
 
-  const handlePrevious = () => {
+  const handlePrevious = async () => {
     if (currentSongIndex > 0) {
-      const previousSong = songHistory[currentSongIndex - 1];
-      const filename = previousSong.path.split('\\').pop();
-      const audioUrl = `http://127.0.0.1:5000/api/audio/${filename}`;
+      if (currentTime > 2) {
+        audioRef.current.currentTime = 0;
+        setCurrentTime(0);
+      } else {
+        const previousSong = songHistory[currentSongIndex - 1];
+        const filename = previousSong.path.split('\\').pop();
+        const audioUrl = `http://127.0.0.1:5000/api/audio/${filename}`;
 
-      setSongData({
-        ...previousSong,
-        audioUrl: audioUrl
-      });
+        setSongData({
+          ...previousSong,
+          audioUrl: audioUrl
+        });
 
-      setCurrentSongIndex(prev => prev - 1);
-      audioRef.current.src = audioUrl;
-      if (isPlaying) {
-        audioRef.current.play();
+        audioRef.current.currentTime = 0;
+        setCurrentTime(0);
+
+        setCurrentSongIndex(prev => prev - 1);
+        await new Promise((resolve) => {
+          audioRef.current.src = audioUrl;
+          audioRef.current.addEventListener('canplaythrough', resolve, { once: true });
+        });
+        if (isPlaying) {
+          await audioRef.current.play();
+        }
       }
     }
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (currentSongIndex < songHistory.length - 1) {
       const nextSong = songHistory[currentSongIndex + 1];
       const filename = nextSong.path.split('\\').pop();
@@ -75,10 +86,13 @@ function Player() {
       setCurrentSongIndex(prev => prev + 1);
       audioRef.current.src = audioUrl;
     } else {
-      fetchSong();
+      await fetchSong();
+      await new Promise((resolve) => {
+        audioRef.current.addEventListener('canplaythrough', resolve, { once: true });
+      });
     }
     if (isPlaying) {
-      audioRef.current.play();
+      await audioRef.current.play();
     }
   };
 
