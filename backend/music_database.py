@@ -5,12 +5,13 @@ metadata of the music files for use in other functions and to have a library of 
 for the implementation of the music player. Creates a database and has functions needed for
 adding songs and deleting songs.
 Other Sources: ChatGPT, https://github.com/ahmedheakl/Music_Player_App_Using_Tkinter_MySQL/tree/main
-Author(s): Nathan Bui
+Author(s): Nathan Bui, Jaret Priddy, Justin Owolabi
 Creation Date: 10/23/2024
 """
 
 '''
 (N) importing packages needed for the creation of the music database
+-flask is needed to establish endpoints that can be accessed by the frontend
 -os is needed for getting file paths
 -sqlite3 is needed for the creation of the actual database
 -tinytag is used for extracting the relevant metadata from a song file when given a path
@@ -20,14 +21,19 @@ of python3 by default
 !!!A LOT OF THE PROGRAM WAS TAKEN FROM THE GITHUB PROJECT LISTED AS A SOURCE, WITH SOME MODIFICATIONS
 MADE TO IT BY AUTHORS AND SOME ERROR CHECKING WITH CHATGPT!!!
 '''
+from flask import Flask, jsonify, request
 import os
 import sqlite3 as sql
 from tinytag import TinyTag
 
+app = Flask(__name__)
+
 # (N) this specifies the path for the music_library.db fill that will contain the database
 db_path = os.path.dirname(
     __file__) + '/music_library.db'  # (N) takes the path of the current file plus the name of the .db file
-con = sql.connect(db_path)  # (N) creates the db with that path
+
+def get_db_connection():
+    return sql.connect(db_path)  # (N) creates the db with that path
 
 '''
 (N) function in charge of creating the tables in the database that will store the info of artists, albums, and songs
@@ -36,6 +42,7 @@ taken from the github referenced in sources.
 
 
 def create_table():
+    con = get_db_connection()
     cur = con.cursor()  # (N) create a cursor object that allows you to execute SQL commands
 
     '''(N) this sql command will create the tables for artists, albums, and songs. 
@@ -77,6 +84,11 @@ def create_table():
             );
             INSERT OR IGNORE INTO artists(id,name) VALUES (0,'UNKNOWN');
             INSERT OR IGNORE INTO albums(id,name) VALUES (0,"UNKNOWN");
+            
+            CREATE TABLE IF NOT EXISTS queue (
+                position INTEGER PRIMARY KEY AUTOINCREMENT,
+                song_id INTEGER,
+                FOREIGN KEY (song_id) REFERENCES songs(id) ON DELETE CASCADE);
             ''')
 
     con.commit()
@@ -85,6 +97,7 @@ def create_table():
 
 # (N) Function in charge of adding a single song to the database
 def add_Song(music_file_path: str):
+    con = get_db_connection()
     cur = con.cursor()
 
     # (N) check if the actual music file exists and if it does not then return nothing and print out an error
@@ -167,6 +180,7 @@ def add_Dir(music_dir: str = music_directory):
 
 
 def deleteSong(song_name: str):  # (N) Function that deletes a song from the database
+    con = get_db_connection()
     cur = con.cursor()
     cur.executescript(f'DELETE FROM songs WHERE name = "{song_name}";')  # (N) simple SQL query where it matches the song name and deletes entries based on that
     con.commit()
@@ -174,6 +188,7 @@ def deleteSong(song_name: str):  # (N) Function that deletes a song from the dat
 
 
 def clear_table():  # (N) clears the database by dropping all the tables in the database
+    con = get_db_connection()
     cur = con.cursor()
     cur.executescript('''DROP TABLE IF EXISTS artists;
                         DROP TABLE IF EXISTS songs;
@@ -181,11 +196,86 @@ def clear_table():  # (N) clears the database by dropping all the tables in the 
     con.commit()
     cur.close()
 
+def add_to_queue(song_name: str): # (Ja) function that adds a song to the queue by its name
+    con = get_db_connection()
+    cur = con.cursor()
+    cur.execute("SELECT id FROM songs WHERE name = ?", (song_name,)) # (Ja) query for the song id using the song's name
+    song = cur.fetchone()
+
+    if song:
+        song_id = song[0] # (Ja) extract the song id from the fetched result
+        cur.execute("INSERT INTO queue (song_id) VALUES (?)", (song_id,)) # (Ja) insert the song id into the queue table
+        con.commit()
+    else:
+        print(f" Song: '{song_name}', was not found in the library.") # (Ja) print a message if the songs not found
+
+    cur.close()
+
+def remove_from_queue(position: int): # (Ja) function tha removes a song from the queue based on its position
+    con = get_db_connection()
+    cur = con.cursor()
+    cur.execute("DELETE FROM queue WHERE position =?", (position,)) # (Ja) delete the song at the specified position in the queue
+    con.commit()
+    cur.close()
+
+def get_from_queue(): #(Jo) will retrieve the current queue
+    con = get_db_connection()
+    cur = con.cursor()
+    cur.execute(''' SELECT queue.position, songs.name FROM queue
+                JOIN songs ON queue.song_id = songs.id
+                ORDER BY  queue.position ASC''')
+    queue = cur.fetchall()
+    cur.close()
+    return queue
+@app.route("/api/current_song",methods=["GET"]) # (N) api endpoint that gets information related to the currently playing song in the queue
+def get_current_song():
+    con = get_db_connection()
+    cur = con.cursor()
+    # (Ja) execute SQL query to get the first song in the queue, joining the songs, artists and albums tables to retrieve full metadata
+    cur.execute('''SELECT songs.name, artists.name, albums.name, songs.length, songs.path
+                   FROM queue
+                   JOIN songs ON queue.song_id = songs.id
+                   LEFT JOIN artists ON songs.artist_id = artists.id
+                   LEFT JOIN albums ON songs.album_id = album.id
+                   ORDER BY queue.position ASC LIMIT 1;''')
+    # (Ja) fetches first song in queue, if it exists
+    current_song = cur.fetchone()
+    cur.close()
+    con.close()
+
+    # (Ja) if the song is retrieved from the query, return its details
+    if current_song:  # (N) use jsonify to give all of the information in JSON response format so that it can be accessed by the frontend
+        return jsonify({
+            "title": current_song[0] or "Unknown Title",
+            "artist": current_song[1] or "Unknown Artist",
+            "album": current_song[2] or "Unknown Album",
+            "length": current_song[3] or "Unknow Length",
+            "path": current_song[4]
+        })
+    else:
+        # (Ja) if there's no songs in the queue return None
+        return jsonify({"message": "No songs in the queue!"})
 
 def main():  # (N) simple function that is creating the database and adding the songs from the default path (Music directory contained in the repository)
     print("adding songs to database")
     create_table()
     add_Dir()
 
+    con = get_db_connection()
+    cur = con.cursor()
+    cur.execute("SELECT name FROM songs")
+    song_names = [row[0] for row in cur.fetchall()]
+    cur.close()
+    print(f"Added {len(song_names)} songs to the database.")
+    if song_names: # (Jo) Adds songs to the queue
+        add_to_queue(song_names[0])
+        add_to_queue(song_names[1] if len(song_names) > 1 else song_names[0])
+        print("Current Queue after adding songs:", get_from_queue())
+        remove_from_queue(1)
+        print("Updated Queue after removal:", get_from_queue())
+    else:
+        print("No songs were found in the specified directory.")
+
+    con.close()
 
 main()
