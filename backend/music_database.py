@@ -222,7 +222,7 @@ def get_current_song():
                    FROM queue
                    JOIN songs ON queue.song_id = songs.id
                    LEFT JOIN artists ON songs.artist_id = artists.id
-                   LEFT JOIN albums ON songs.album_id = album.id
+                   LEFT JOIN albums ON songs.album_id = albums.id
                    ORDER BY queue.position ASC LIMIT 1;''')
     # (Ja) fetches first song in queue, if it exists
     current_song = cur.fetchone()
