@@ -159,9 +159,13 @@ def add_Song(music_file_path: str):
 
 # (N) this is just grabbing the path of a Music directory in the current repository that will be used as the
 # default for storing music to be added to the database. cwd is the function to get the current working dir
-current_directory = os.getcwd()
-music_directory = os.path.join(current_directory, "Music")
+music_directory = "Music"
 print(music_directory)
+full_path = os.path.abspath(music_directory)
+print(full_path)
+
+current_dir = os.getcwd()
+print(current_dir)
 
 '''
 (N) function in charge of adding music_files from an entire directory into the database. 
@@ -323,6 +327,7 @@ def serve_audio(filename):
 
 def main():  # (N) simple function that is creating the database and adding the songs from the default path (Music directory contained in the repository)
     print("adding songs to database")
+    clear_table()
     create_table()
     add_Dir()
 
