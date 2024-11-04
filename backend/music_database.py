@@ -24,6 +24,8 @@ MADE TO IT BY AUTHORS AND SOME ERROR CHECKING WITH CHATGPT!!!
 '''
 from flask import Flask, jsonify, request, send_file
 from flask_cors import CORS
+from mutagen.mp3 import MP3
+from mutagen.id3 import ID3, APIC
 import os
 import sqlite3 as sql
 from tinytag import TinyTag
@@ -84,6 +86,7 @@ def create_table():
                 length INTEGER DEFAULT 0,
                 added TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 path TEXT,
+                cover_art TEXT,
                 FOREIGN KEY (album_id)  REFERENCES albums(id)  ON DELETE SET DEFAULT,
                 FOREIGN KEY (artist_id) REFERENCES artists(id) ON DELETE SET DEFAULT,
                 UNIQUE (name, artist_id, album_id)
@@ -144,12 +147,28 @@ def add_Song(music_file_path: str):
         # (N) if that is the case then it will try to extract the name from the path instead
         name = os.path.basename(music_file_path).split(".")[0]
 
-    # (N) it will always add the song name into the database, with the relevant data for name, length, path, album_id, and artist_id
-    cur.execute('''INSERT OR IGNORE INTO songs(name, length, path, album_id, artist_id)
+    cover_art_path = None
+    try:
+        audio = MP3(music_file_path, ID3=ID3)
+        if audio.tags and 'APIC:' in audio.tags:
+            album_cover = audio.tags['APIC:'].data
+            cover_art_path = f'./cover_art/{album}.jpg'
+
+            # Save cover art only if it doesn't already exist
+            if not os.path.exists(cover_art_path):
+                os.makedirs('./cover_art', exist_ok=True)
+                with open(cover_art_path, 'wb') as img:
+                    img.write(album_cover)
+    except Exception as e:
+        print(f"No cover art found in {music_file_path}. Error: {e}")
+
+    # (N) it will always add the song name into the database, with the relevant data for name, length, path, album_id, artist_id, and cover art for the song
+    cur.execute('''INSERT OR IGNORE INTO songs(name, length, path, album_id, artist_id, cover_art)
                    SELECT ?, ?, ?,
                           (SELECT COALESCE((SELECT id FROM albums WHERE name = ?), 0)), 
-                          (SELECT COALESCE((SELECT id FROM artists WHERE name = ?), 0));
-    ''', (name, length, music_file_path, album, artist))
+                          (SELECT COALESCE((SELECT id FROM artists WHERE name = ?), 0)),
+                          ?;
+    ''', (name, length, music_file_path, album, artist, cover_art_path))
 
     con.commit()  # (N) committing changes
     cur.close()
@@ -251,11 +270,13 @@ def get_from_queue():  # (Jo) will retrieve the current queue
     return queue
 
 
-@app.route("/api/random_song", methods=["GET"])  # (N) API endpoint for getting a random song that will be used temporarily for the forward and backward buttons
+@app.route("/api/random_song", methods=[
+    "GET"])  # (N) API endpoint for getting a random song that will be used temporarily for the forward and backward buttons
 def get_random_song():  # (N) function for getting a random song
     con = get_db_connection()
     cur = con.cursor()
-    cur.execute("SELECT id FROM songs")  # (N) get a list of every song and then select all of the song_ids from that list
+    cur.execute(
+        "SELECT id FROM songs")  # (N) get a list of every song and then select all of the song_ids from that list
     song_ids = [row[0] for row in cur.fetchall()]
 
     if song_ids:
@@ -265,7 +286,7 @@ def get_random_song():  # (N) function for getting a random song
 
     # (N) get all the relevant metadata from that song
     cur.execute('''SELECT songs.name, artists.name AS artist, albums.name AS album, 
-                                  songs.length, songs.path 
+                                  songs.length, songs.path, songs.cover_art 
                            FROM songs
                            LEFT JOIN artists ON songs.artist_id = artists.id
                            LEFT JOIN albums ON songs.album_id = albums.id
@@ -282,7 +303,8 @@ def get_random_song():  # (N) function for getting a random song
             "artist": song_details[1] or "Unknown Artist",
             "album": song_details[2] or "Unknown Album",
             "length": song_details[3] or "Unknown Length",
-            "path": song_details[4]
+            "path": song_details[4],
+            "cover_art": song_details[5]
         }), 200
     # (N) if there was an error getting that information return an error
     else:
@@ -295,7 +317,7 @@ def get_current_song():
     con = get_db_connection()
     cur = con.cursor()
     # (Ja) execute SQL query to get the first song in the queue, joining the songs, artists and albums tables to retrieve full metadata
-    cur.execute('''SELECT songs.name, artists.name, albums.name, songs.length, songs.path
+    cur.execute('''SELECT songs.name, artists.name, albums.name, songs.length, songs.path, songs.cover_art
                    FROM queue
                    JOIN songs ON queue.song_id = songs.id
                    LEFT JOIN artists ON songs.artist_id = artists.id
@@ -312,18 +334,21 @@ def get_current_song():
             "title": current_song[0] or "Unknown Title",
             "artist": current_song[1] or "Unknown Artist",
             "album": current_song[2] or "Unknown Album",
-            "length": current_song[3] or "Unknow Length",
-            "path": current_song[4]
+            "length": current_song[3] or "Unknown Length",
+            "path": current_song[4],
+            "cover_art": current_song[5]
         }), 200
     else:
         # (Ja) if there's no songs in the queue return None 
         return jsonify({"message": "No songs in the queue!"}), 404
+
 
 @app.route('/api/audio/<path:filename>')
 def serve_audio(filename):
     music_folder = 'C:\\Users\\User\\Desktop\\school.work\\581\\eecs581proj3\\backend'
     file_path = os.path.join(music_folder, filename)
     return send_file(file_path)
+
 
 def main():  # (N) simple function that is creating the database and adding the songs from the default path (Music directory contained in the repository)
     print("adding songs to database")
