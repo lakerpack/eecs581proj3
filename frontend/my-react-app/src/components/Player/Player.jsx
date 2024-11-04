@@ -54,10 +54,12 @@ function Player() {
       const data = await response.json();
       const filename = data.path.split('\\').pop();
       const audioUrl = `http://127.0.0.1:5000/api/audio/${filename}`;
+      const coverArtUrl = `http://127.0.0.1:5000/api/cover_art/${data.cover_art.split('/').pop()}`;
 
       setSongData({
         ...data,
-        audioUrl: audioUrl
+        audioUrl: audioUrl,
+        coverArtUrl: coverArtUrl
       });
 
       setSongHistory(prev => [...prev.slice(0, currentSongIndex + 1), data]);
@@ -84,10 +86,12 @@ function Player() {
         const previousSong = songHistory[currentSongIndex - 1];
         const filename = previousSong.path.split('\\').pop();
         const audioUrl = `http://127.0.0.1:5000/api/audio/${filename}`;
+        const coverArtUrl = `http://127.0.0.1:5000/api/cover_art/${previousSong.cover_art.split('/').pop()}`;
 
         setSongData({
           ...previousSong,
-          audioUrl: audioUrl
+          audioUrl: audioUrl,
+          coverArtUrl: coverArtUrl
         });
 
         audioRef.current.currentTime = 0;
@@ -114,10 +118,12 @@ function Player() {
       const nextSong = songHistory[currentSongIndex + 1];
       const filename = nextSong.path.split('\\').pop();
       const audioUrl = `http://127.0.0.1:5000/api/audio/${filename}`;
+      const coverArtUrl = `http://127.0.0.1:5000/api/cover_art/${nextSong.cover_art.split('/').pop()}`;
 
       setSongData({
         ...nextSong,
-        audioUrl: audioUrl
+        audioUrl: audioUrl,
+        coverArtUrl: coverArtUrl
       });
 
       setCurrentSongIndex(prev => prev + 1);
@@ -220,10 +226,7 @@ function Player() {
   return (
     <div className="player">
       <div className="player-info">
-        <img
-          src={defaultImage}
-          className="album-cover"
-        />
+        <img src={songData?.coverArtUrl} className="album-cover"/>
         <div className="song-info">
           <h3 className="song-title">{songData?.title}</h3>
           <p className="artist-name">{songData?.artist}</p>

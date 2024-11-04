@@ -350,6 +350,11 @@ def serve_audio(filename):
     return send_file(file_path)
 
 
+@app.route('/api/cover_art/<path:filename>')
+def serve_cover_art(filename):
+    return send_file(f'cover_art/{filename}')
+
+
 def main():  # (N) simple function that is creating the database and adding the songs from the default path (Music directory contained in the repository)
     print("adding songs to database")
     clear_table()
