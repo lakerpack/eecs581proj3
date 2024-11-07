@@ -250,9 +250,8 @@ def add_to_queue(song_name: str):  # (Ja) function that adds a song to the queue
 
     cur.close()
     con.close()
-    # (Jo) If a position is specified, remove the song at that position from the queue
-    data = request.json
-    song_name = data.get("song_name")
+    # (Jo) If a position is specified, add the song at that position from the queue
+    song_name = cur.fetchone()
     if song_name:
         add_to_queue(song_name)
         return jsonify({"message": f"Song '{song_name}' added to queue."}), 200\
@@ -271,9 +270,8 @@ def remove_from_queue(position: int):  # (Ja) function tha removes a song from t
     cur.close()
     con.close()
     # (Jo) remove the song at that position from the queue 
-    data = request.json 
-    position = data.get("position")
-    if position is not None:
+    position = cur.fetchone()
+    if position:
         remove_from_queue(position)
         return jsonify({"message": f"Song at position {position} removed from queue."}), 200
     # (Jo) returns error
