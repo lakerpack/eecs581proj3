@@ -238,26 +238,20 @@ def add_to_queue(song_name: str):  # (Ja) function that adds a song to the queue
     con = get_db_connection()
     cur = con.cursor()
     cur.execute("SELECT id FROM songs WHERE name = ?", (song_name,))  # (Ja) query for the song id using the song's name
-    song = cur.fetchone()
+    song_name = cur.fetchone()
+    cur.close()
+    con.close()
 
-    if song:
-        song_id = song[0]  # (Ja) extract the song id from the fetched result
+    if song_name:
+        song_id = song_name[0]  # (Ja) extract the song id from the fetched result
         cur.execute("INSERT INTO queue (song_id) VALUES (?)",
                     (song_id,))  # (Ja) insert the song id into the queue table
         con.commit()
+        return jsonify({"message": f"Song '{song_name}' added to queue."}), 200
     else:
-        print(f" Song: '{song_name}', was not found in the library.")  # (Ja) print a message if the songs not found
+        #print(f" Song: '{song_name}', was not found in the library.")  # (Ja) print a message if the songs not found
+        return jsonify({"error": "No song name provided"}), 404 #(jo) returns error
 
-    cur.close()
-    con.close()
-    # (Jo) If a position is specified, add the song at that position from the queue
-    song_name = cur.fetchone()
-    if song_name:
-        add_to_queue(song_name)
-        return jsonify({"message": f"Song '{song_name}' added to queue."}), 200\
-    # (Jo) returns error
-    else:
-        return jsonify({"error": "No song name provided"}), 404
 
 @app.route('/api/queue/remove', 
            methods=['DELETE']) # (Jo) deletes a song that's at a curtain position in the queue
