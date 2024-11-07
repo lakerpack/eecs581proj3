@@ -377,98 +377,33 @@ def serve_audio(filename):
     file_path = os.path.join(music_folder, filename)
     return send_file(file_path)
 
-
-
-def get_from_queue():  # (Jo) will retrieve the current queue
+@app.route('/api/all_songs', 
+           methods=['GET'])
+def get_all_songs():
     con = get_db_connection()
     cur = con.cursor()
-    cur.execute(''' SELECT queue.position, songs.name FROM queue
-                JOIN songs ON queue.song_id = songs.id
-                ORDER BY  queue.position ASC''')
-    queue = cur.fetchall()
-    cur.close()
-    return queue
-
-
-@app.route("/api/random_song", methods=[
-    "GET"])  # (N) API endpoint for getting a random song that will be used temporarily for the forward and backward buttons
-def get_random_song():  # (N) function for getting a random song
-    con = get_db_connection()
-    cur = con.cursor()
-    cur.execute(
-        "SELECT id FROM songs")  # (N) get a list of every song and then select all of the song_ids from that list
-    song_ids = [row[0] for row in cur.fetchall()]
-
-    if song_ids:
-        random_song_id = random.choice(song_ids)  # (N) grab a random song id and then add that song into the queue
-        cur.execute("INSERT INTO queue (song_id) VALUES (?)", (random_song_id,))
-        con.commit()
-
-    # (N) get all the relevant metadata from that song
     cur.execute('''SELECT songs.name, artists.name AS artist, albums.name AS album, 
-                                  songs.length, songs.path, songs.cover_art 
-                           FROM songs
-                           LEFT JOIN artists ON songs.artist_id = artists.id
-                           LEFT JOIN albums ON songs.album_id = albums.id
-                           WHERE songs.id = ?''', (random_song_id,))
-
-    song_details = cur.fetchone()  # (N) add it to a variable
-    cur.close()
-    con.close()
-
-    if song_details:  # (N) if those details are valid use jsonify to put it into JSON format to respond to the API call
-        # (N) giving all of the information needed by the frontend
-        return jsonify({
-            "title": song_details[0] or "Unknown Title",
-            "artist": song_details[1] or "Unknown Artist",
-            "album": song_details[2] or "Unknown Album",
-            "length": song_details[3] or "Unknown Length",
-            "path": song_details[4],
-            "cover_art": song_details[5]
-        }), 200
-    # (N) if there was an error getting that information return an error
-    else:
-        return jsonify({"error": "No songs found"}), 404
-
-
-@app.route("/api/current_song",
-           methods=["GET"])  # (N) api endpoint that gets information related to the currently playing song in the queue
-def get_current_song():
-    con = get_db_connection()
-    cur = con.cursor()
-    # (Ja) execute SQL query to get the first song in the queue, joining the songs, artists and albums tables to retrieve full metadata
-    cur.execute('''SELECT songs.name, artists.name, albums.name, songs.length, songs.path, songs.cover_art
-                   FROM queue
-                   JOIN songs ON queue.song_id = songs.id
+                          songs.length, songs.path, songs.cover_art 
+                   FROM songs
                    LEFT JOIN artists ON songs.artist_id = artists.id
                    LEFT JOIN albums ON songs.album_id = albums.id
-                   ORDER BY queue.position ASC LIMIT 1;''')
-    # (Ja) fetches first song in queue, if it exists
-    current_song = cur.fetchone()
+                   ORDER BY songs.name ASC''')
+    get_all_songs = cur.fetchall()
     cur.close()
     con.close()
-
-    # (Ja) if the song is retrieved from the query, return its details
-    if current_song:  # (N) use jsonify to give all of the information in JSON response format so that it can be accessed by the frontend
+    
+    # (N) Format the result as a list of dictionaries for JSON serialization
+    if get_all_songs:  # (N) use jsonify to give all of the information in JSON response format so that it can be accessed by the frontend
         return jsonify({
-            "title": current_song[0] or "Unknown Title",
-            "artist": current_song[1] or "Unknown Artist",
-            "album": current_song[2] or "Unknown Album",
-            "length": current_song[3] or "Unknown Length",
-            "path": current_song[4],
-            "cover_art": current_song[5]
+            "title": get_all_songs[0] or "Unknown Title",
+            #"artist": get_all_songs[1] or "Unknown Artist",
+            #"album": get_all_songs[2] or "Unknown Album",
+            #"length": get_all_songs[3] or "Unknown Length",
+            #"path": get_all_songs[4],
+            #"cover_art": get_all_songs[5]
         }), 200
     else:
-        # (Ja) if there's no songs in the queue return None 
-        return jsonify({"message": "No songs in the queue!"}), 404
-
-
-@app.route('/api/audio/<path:filename>')
-def serve_audio(filename):
-    music_folder = 'C:\\Users\\User\\Desktop\\school.work\\581\\eecs581proj3\\backend'
-    file_path = os.path.join(music_folder, filename)
-    return send_file(file_path)
-
+        return jsonify({"message": "No songs in library!"}), 404
 
 def main():  # (N) simple function that is creating the database and adding the songs from the default path (Music directory contained in the repository)
     print("adding songs to database")
