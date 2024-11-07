@@ -238,12 +238,12 @@ def add_to_queue(song_name: str):  # (Ja) function that adds a song to the queue
     con = get_db_connection()
     cur = con.cursor()
     cur.execute("SELECT id FROM songs WHERE name = ?", (song_name,))  # (Ja) query for the song id using the song's name
-    song_name = cur.fetchone()
+    song = cur.fetchone()
     cur.close()
     con.close()
 
-    if song_name:
-        song_id = song_name[0]  # (Ja) extract the song id from the fetched result
+    if song:
+        song_id = song[0]  # (Ja) extract the song id from the fetched result
         cur.execute("INSERT INTO queue (song_id) VALUES (?)",
                     (song_id,))  # (Ja) insert the song id into the queue table
         con.commit()
