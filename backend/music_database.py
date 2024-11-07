@@ -380,14 +380,14 @@ def get_all_songs():
                    LEFT JOIN artists ON songs.artist_id = artists.id
                    LEFT JOIN albums ON songs.album_id = albums.id
                    ORDER BY songs.name ASC''')
-    get_all_songs = cur.fetchall()
+    all_songs = cur.fetchall()
     cur.close()
     con.close()
     
     # (N) Format the result as a list of dictionaries for JSON serialization
-    if get_all_songs:  # (N) use jsonify to give all of the information in JSON response format so that it can be accessed by the frontend
+    if all_songs:  # (N) use jsonify to give all of the information in JSON response format so that it can be accessed by the frontend
         return jsonify({
-            "title": get_all_songs[0] or "Unknown Title",
+            "title": all_songs[0] or "Unknown Title",
             #"artist": get_all_songs[1] or "Unknown Artist",
             #"album": get_all_songs[2] or "Unknown Album",
             #"length": get_all_songs[3] or "Unknown Length",
