@@ -232,7 +232,8 @@ def clear_table():  # (N) clears the database by dropping all the tables in the 
     con.commit()
     cur.close()
 
-
+@app.route('/api/queue/add', 
+           methods=['POST'])
 def add_to_queue(song_name: str):  # (Ja) function that adds a song to the queue by its name
     con = get_db_connection()
     cur = con.cursor()
@@ -248,8 +249,19 @@ def add_to_queue(song_name: str):  # (Ja) function that adds a song to the queue
         print(f" Song: '{song_name}', was not found in the library.")  # (Ja) print a message if the songs not found
 
     cur.close()
+    con.close()
+    # (Jo) If a position is specified, remove the song at that position from the queue
+    data = request.json
+    song_name = data.get("song_name")
+    if song_name:
+        add_to_queue(song_name)
+        return jsonify({"message": f"Song '{song_name}' added to queue."}), 200\
+    # (Jo) returns error
+    else:
+        return jsonify({"error": "No song name provided"}), 404
 
-
+@app.route('/api/queue/remove', 
+           methods=['DELETE']) # (Jo) deletes a song that's at a curtain position in the queue
 def remove_from_queue(position: int):  # (Ja) function tha removes a song from the queue based on its position
     con = get_db_connection()
     cur = con.cursor()
@@ -257,6 +269,114 @@ def remove_from_queue(position: int):  # (Ja) function tha removes a song from t
                 (position,))  # (Ja) delete the song at the specified position in the queue
     con.commit()
     cur.close()
+    con.close()
+    # (Jo) remove the song at that position from the queue 
+    data = request.json 
+    position = data.get("position")
+    if position is not None:
+        remove_from_queue(position)
+        return jsonify({"message": f"Song at position {position} removed from queue."}), 200
+    # (Jo) returns error
+    else:
+        return jsonify({"error": "No position provided"}), 404
+
+
+@app.route('/api/queue', 
+           methods=['GET']) #(Jo) APi endpoint for retrieving songs that are in queue and their positions
+def get_from_queue():  # (Jo) will retrieve the current queue
+    con = get_db_connection()
+    cur = con.cursor()
+    cur.execute(''' SELECT queue.position, songs.name FROM queue
+                JOIN songs ON queue.song_id = songs.id
+                ORDER BY  queue.position ASC''')
+    queue = cur.fetchall()
+    cur.close()
+    con.close()
+    #return queue
+    # (Jo) will retrive all the songs in the queue and list their name and position
+    if queue:
+        return jsonify(queue), 200 
+
+
+@app.route("/api/random_song", methods=[
+    "GET"])  # (N) API endpoint for getting a random song that will be used temporarily for the forward and backward buttons
+def get_random_song():  # (N) function for getting a random song
+    con = get_db_connection()
+    cur = con.cursor()
+    cur.execute(
+        "SELECT id FROM songs")  # (N) get a list of every song and then select all of the song_ids from that list
+    song_ids = [row[0] for row in cur.fetchall()]
+
+    if song_ids:
+        random_song_id = random.choice(song_ids)  # (N) grab a random song id and then add that song into the queue
+        cur.execute("INSERT INTO queue (song_id) VALUES (?)", (random_song_id,))
+        con.commit()
+
+    # (N) get all the relevant metadata from that song
+    cur.execute('''SELECT songs.name, artists.name AS artist, albums.name AS album, 
+                                  songs.length, songs.path, songs.cover_art 
+                           FROM songs
+                           LEFT JOIN artists ON songs.artist_id = artists.id
+                           LEFT JOIN albums ON songs.album_id = albums.id
+                           WHERE songs.id = ?''', (random_song_id,))
+
+    song_details = cur.fetchone()  # (N) add it to a variable
+    cur.close()
+    con.close()
+
+    if song_details:  # (N) if those details are valid use jsonify to put it into JSON format to respond to the API call
+        # (N) giving all of the information needed by the frontend
+        return jsonify({
+            "title": song_details[0] or "Unknown Title",
+            "artist": song_details[1] or "Unknown Artist",
+            "album": song_details[2] or "Unknown Album",
+            "length": song_details[3] or "Unknown Length",
+            "path": song_details[4],
+            "cover_art": song_details[5]
+        }), 200
+    # (N) if there was an error getting that information return an error
+    else:
+        return jsonify({"error": "No songs found"}), 404
+
+
+@app.route("/api/current_song",
+           methods=["GET"])  # (N) api endpoint that gets information related to the currently playing song in the queue
+def get_current_song():
+    con = get_db_connection()
+    cur = con.cursor()
+    # (Ja) execute SQL query to get the first song in the queue, joining the songs, artists and albums tables to retrieve full metadata
+    cur.execute('''SELECT songs.name, artists.name, albums.name, songs.length, songs.path, songs.cover_art
+                   FROM queue
+                   JOIN songs ON queue.song_id = songs.id
+                   LEFT JOIN artists ON songs.artist_id = artists.id
+                   LEFT JOIN albums ON songs.album_id = albums.id
+                   ORDER BY queue.position ASC LIMIT 1;''')
+    # (Ja) fetches first song in queue, if it exists
+    current_song = cur.fetchone()
+    cur.close()
+    con.close()
+
+    # (Ja) if the song is retrieved from the query, return its details
+    if current_song:  # (N) use jsonify to give all of the information in JSON response format so that it can be accessed by the frontend
+        return jsonify({
+            "title": current_song[0] or "Unknown Title",
+            "artist": current_song[1] or "Unknown Artist",
+            "album": current_song[2] or "Unknown Album",
+            "length": current_song[3] or "Unknown Length",
+            "path": current_song[4],
+            "cover_art": current_song[5]
+        }), 200
+    else:
+        # (Ja) if there's no songs in the queue return None 
+        return jsonify({"message": "No songs in the queue!"}), 404
+
+
+@app.route('/api/audio/<path:filename>')
+def serve_audio(filename):
+    music_folder = 'C:\\Users\\User\\Desktop\\school.work\\581\\eecs581proj3\\backend'
+    file_path = os.path.join(music_folder, filename)
+    return send_file(file_path)
+
 
 
 def get_from_queue():  # (Jo) will retrieve the current queue
