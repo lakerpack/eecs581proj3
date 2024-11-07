@@ -1,0 +1,44 @@
+.volume-control {
+    display: flex;
+    align-items: center;
+    padding: 0px 0px 0px 10px;
+    /*min-width: 2px;*/
+}
+
+.volume-button {
+    background: none;
+    border: none;
+    padding: 0; 
+    display: flex;
+    align-items: center;
+}
+
+.volume-icon {
+    width: 20px;
+    height: 20px;
+}
+
+.volume-slider-container {
+    width: 0;
+    transition: width 0.2s ease;
+    overflow: hidden;
+    padding-left: 10px;
+}
+
+.volume-slider-container.visible {
+    width: 20px;
+}
+
+.volume-slider {
+    height: 3px;
+    background-color: #e6d5ff;
+    border-radius: 3px;
+    position: relative;
+    cursor: pointer;
+}
+
+.volume-slider-fill {
+    height: 100%;
+    background-color: #9747ff;
+    border-radius: 2px;
+}
