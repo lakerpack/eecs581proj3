@@ -232,7 +232,8 @@ def clear_table():  # (N) clears the database by dropping all the tables in the 
     con.commit()
     cur.close()
 
-
+@app.route('/api/queue/add', 
+           methods=['POST'])
 def add_to_queue(song_name: str):  # (Ja) function that adds a song to the queue by its name
     con = get_db_connection()
     cur = con.cursor()
@@ -248,8 +249,19 @@ def add_to_queue(song_name: str):  # (Ja) function that adds a song to the queue
         print(f" Song: '{song_name}', was not found in the library.")  # (Ja) print a message if the songs not found
 
     cur.close()
+    con.close()
+    # (Jo) If a position is specified, remove the song at that position from the queue
+    data = request.json
+    song_name = data.get("song_name")
+    if song_name:
+        add_to_queue(song_name)
+        return jsonify({"message": f"Song '{song_name}' added to queue."}), 200\
+    # (Jo) returns error
+    else:
+        return jsonify({"error": "No song name provided"}), 404
 
-
+@app.route('/api/queue/remove', 
+           methods=['DELETE']) # (Jo) deletes a song that's at a curtain position in the queue
 def remove_from_queue(position: int):  # (Ja) function tha removes a song from the queue based on its position
     con = get_db_connection()
     cur = con.cursor()
@@ -257,8 +269,20 @@ def remove_from_queue(position: int):  # (Ja) function tha removes a song from t
                 (position,))  # (Ja) delete the song at the specified position in the queue
     con.commit()
     cur.close()
+    con.close()
+    # (Jo) remove the song at that position from the queue 
+    data = request.json 
+    position = data.get("position")
+    if position is not None:
+        remove_from_queue(position)
+        return jsonify({"message": f"Song at position {position} removed from queue."}), 200
+    # (Jo) returns error
+    else:
+        return jsonify({"error": "No position provided"}), 404
 
 
+@app.route('/api/queue', 
+           methods=['GET']) #(Jo) APi endpoint for retrieving songs that are in queue and their positions
 def get_from_queue():  # (Jo) will retrieve the current queue
     con = get_db_connection()
     cur = con.cursor()
@@ -267,7 +291,11 @@ def get_from_queue():  # (Jo) will retrieve the current queue
                 ORDER BY  queue.position ASC''')
     queue = cur.fetchall()
     cur.close()
-    return queue
+    con.close()
+    #return queue
+    # (Jo) will retrive all the songs in the queue and list their name and position
+    if queue:
+        return jsonify(queue), 200 
 
 
 @app.route("/api/random_song", methods=[
@@ -349,6 +377,33 @@ def serve_audio(filename):
     file_path = os.path.join(music_folder, filename)
     return send_file(file_path)
 
+@app.route('/api/all_songs', 
+           methods=['GET'])
+def get_all_songs():
+    con = get_db_connection()
+    cur = con.cursor()
+    cur.execute('''SELECT songs.name, artists.name AS artist, albums.name AS album, 
+                          songs.length, songs.path, songs.cover_art 
+                   FROM songs
+                   LEFT JOIN artists ON songs.artist_id = artists.id
+                   LEFT JOIN albums ON songs.album_id = albums.id
+                   ORDER BY songs.name ASC''')
+    get_all_songs = cur.fetchall()
+    cur.close()
+    con.close()
+    
+    # (N) Format the result as a list of dictionaries for JSON serialization
+    if get_all_songs:  # (N) use jsonify to give all of the information in JSON response format so that it can be accessed by the frontend
+        return jsonify({
+            "title": get_all_songs[0] or "Unknown Title",
+            #"artist": get_all_songs[1] or "Unknown Artist",
+            #"album": get_all_songs[2] or "Unknown Album",
+            #"length": get_all_songs[3] or "Unknown Length",
+            #"path": get_all_songs[4],
+            #"cover_art": get_all_songs[5]
+        }), 200
+    else:
+        return jsonify({"message": "No songs in library!"}), 404
 
 @app.route('/api/cover_art/<path:filename>')
 def serve_cover_art(filename):
