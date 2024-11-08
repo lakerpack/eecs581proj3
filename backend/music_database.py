@@ -243,8 +243,7 @@ def api_add_to_queue():
         return jsonify({"message": result["message"]}), 200  # (Ja) success response
     else:
         return jsonify({"error": result["message"]}), 404  # (Ja) error response, if song not found
-    
-    
+        
     
 def remove_from_queue(position: int):  # (Ja) function that removes a song from the queue based on its position
     con = get_db_connection()
@@ -270,7 +269,6 @@ def remove_from_queue(position: int):  # (Ja) function that removes a song from 
     return {"success": success, "message": message}
 
     
-    
 @app.route("/api/remove_from_queue", methods=["DELETE"])
 def api_remove_from_queue():
     data = request.json  # (Ja) getting the json data from the request
@@ -280,7 +278,6 @@ def api_remove_from_queue():
     # (Ja) calling the remove_from_queue function
     remove_from_queue(position)
     return jsonify({"message": f"Removed song at position {position} from the queue"}), 200
-
 
 
 def get_from_queue():  # (Jo) will retrieve the current queue
