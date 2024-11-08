@@ -231,6 +231,20 @@ def add_to_queue(song_name: str):  # (Ja) function that adds a song to the queue
     return success
     
 
+@app.route("/api/add_to_queue", methods=["POST"])
+def api_add_to_queue():
+    data = request.json  # (Ja) getting the json data from the request
+    song_name = data.get("song_name")  # (Ja) getting the song name from the json data
+    if not song_name:
+        return jsonify({"error": "Song name is required"}), 400  # (Ja) returning an error if song name is not provided
+    # (Ja) calling the add_to_queue function and getting the result
+    result = add_to_queue(song_name)
+    if result["success"]:
+        return jsonify({"message": result["message"]}), 200  # (Ja) success response
+    else:
+        return jsonify({"error": result["message"]}), 404  # (Ja) error response, if song not found
+    
+
 def remove_from_queue(position: int):  # (Ja) function tha removes a song from the queue based on its position
     con = get_db_connection()
     cur = con.cursor()
