@@ -244,14 +244,43 @@ def api_add_to_queue():
     else:
         return jsonify({"error": result["message"]}), 404  # (Ja) error response, if song not found
     
-
-def remove_from_queue(position: int):  # (Ja) function tha removes a song from the queue based on its position
+    
+    
+def remove_from_queue(position: int):  # (Ja) function that removes a song from the queue based on its position
     con = get_db_connection()
     cur = con.cursor()
-    cur.execute("DELETE FROM queue WHERE position =?",
-                (position,))  # (Ja) delete the song at the specified position in the queue
-    con.commit()
+
+    # (Ja) checking if there’s a song at the specified position before deleting
+    cur.execute("SELECT * FROM queue WHERE position = ?", (position,))
+    song_exists = cur.fetchone() is not None
+
+    # (Ja) if the song exists at the position, delete it
+    if song_exists:
+        cur.execute("DELETE FROM queue WHERE position = ?", (position,)) # (Ja) delete the song at the specified position in the queue
+        con.commit()
+        message = f"Removed song at position {position} from the queue."
+        success = True
+    else:
+        message = f"No song found at position {position} in the queue."
+        success = False
+
     cur.close()
+    con.close()
+
+    return {"success": success, "message": message}
+
+    
+    
+@app.route("/api/remove_from_queue", methods=["DELETE"])
+def api_remove_from_queue():
+    data = request.json  # (Ja) getting the json data from the request
+    position = data.get("position")  # (Ja) getting the position from the json data
+    if position is None:
+        return jsonify({"error": "Position is required"}), 400  # (Ja) returning an error if position is not provided
+    # (Ja) calling the remove_from_queue function
+    remove_from_queue(position)
+    return jsonify({"message": f"Removed song at position {position} from the queue"}), 200
+
 
 
 def get_from_queue():  # (Jo) will retrieve the current queue
