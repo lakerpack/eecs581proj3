@@ -38,19 +38,172 @@ function Player() {
   const [volume, setVolume] = useState(1);
   const [songHistory, setSongHistory] = useState([]);
   const [currentSongIndex, setCurrentSongIndex] = useState(-1);
+  const [queue, setQueue] = useState([]);
+  const [currentQueuePosition, setCurrentQueuePosition] = useState(null);
 
   const audioRef = useRef(new Audio());
-  // const intervalRef = useRef();
 
-  let apiUrl = 'http://127.0.0.1:5000/api/random_song';
+  const fetchSongDetails = async (songName) => {
+    try {
+      const response = await fetch(`http://127.0.0.1:5000/api/song/${encodeURIComponent(songName)}`);
+      if (!response.ok) {
+        throw new Error('Song not found');
+      }
+      return await response.json();
+    } catch (err) {
+      console.error(err);
+      return null;
+    }
+  };
+
+
+  const fetchQueue = async () => {
+    try {
+      const response = await fetch('http://127.0.0.1:5000/api/queue');
+      const data = await response.json();
+      setQueue(data);
+
+      if (data.length > 0) {
+        const startPosition = data[0].position;
+        const songDetails = await fetchSongDetails(data[0].title);
+
+        if (songDetails) {
+          const filename = songDetails.path.split('\\').pop();
+          const audioUrl = `http://127.0.0.1:5000/api/audio/${filename}`;
+          const coverArtUrl = `http://127.0.0.1:5000/api/cover_art/${songDetails.cover_art.split('/').pop()}`;
+
+          setSongData({
+            ...songDetails,
+            audioUrl: audioUrl,
+            coverArtUrl: coverArtUrl
+          });
+
+          setSongHistory(prev => [...prev.slice(0, currentSongIndex + 1), songDetails]);
+          setCurrentSongIndex(prev => prev + 1);
+          setCurrentQueuePosition(startPosition);
+
+          await new Promise((resolve) => {
+            audioRef.current.src = audioUrl;
+            audioRef.current.addEventListener('canplaythrough', resolve, { once: true });
+          });
+        }
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
 
   /*
-  Fetch from the Flask backend using the apiUrl and initialize songData. 
-  Add the songData to the history and set index.
+  Handle previous songs in the history with an async function to determine
+  1. Is there a previous song?
+  2. Is the time > 2 (to prevent double clicks)
+  Then move forward by going to the previous song and playing if the music was already playing.
   */
+  const handlePrevious = async () => {
+    if (currentTime > 2) {
+      audioRef.current.currentTime = 0;
+      setCurrentTime(0);
+    } else {
+      const currentIndex = queue.findIndex(song => song.position === currentQueuePosition);
+
+      if (currentIndex > 0) {
+        const prevQueueSong = queue[currentIndex - 1];
+        const songDetails = await fetchSongDetails(prevQueueSong.title);
+
+        if (songDetails) {
+          const filename = songDetails.path.split('\\').pop();
+          const audioUrl = `http://127.0.0.1:5000/api/audio/${filename}`;
+          const coverArtUrl = `http://127.0.0.1:5000/api/cover_art/${songDetails.cover_art.split('/').pop()}`;
+
+          setSongData({
+            ...songDetails,
+            audioUrl: audioUrl,
+            coverArtUrl: coverArtUrl
+          });
+
+          setCurrentSongIndex(prev => prev - 1);
+          setCurrentQueuePosition(prevQueueSong.position);
+
+          await new Promise((resolve) => {
+            audioRef.current.src = audioUrl;
+            audioRef.current.addEventListener('canplaythrough', resolve, { once: true });
+          });
+
+          if (isPlaying) {
+            await audioRef.current.play();
+          }
+        }
+      }
+    }
+  };
+
+
+  /*
+  Similarly to handlePrevious, but instead we do another fetchSong() call to do an API call to our backend.
+  This creates a random song that we use to move on, but we have to await for it to load since it is async.
+  */
+  const handleNext = async () => {
+    const currentIndex = queue.findIndex(song => song.position === currentQueuePosition);
+
+    if (currentIndex !== -1 && currentIndex < queue.length - 1) {
+      const nextQueueSong = queue[currentIndex + 1];
+      const songDetails = await fetchSongDetails(nextQueueSong.title);
+
+      if (songDetails) {
+        const filename = songDetails.path.split('\\').pop();
+        const audioUrl = `http://127.0.0.1:5000/api/audio/${filename}`;
+        const coverArtUrl = `http://127.0.0.1:5000/api/cover_art/${songDetails.cover_art.split('/').pop()}`;
+
+        setSongData({
+          ...songDetails,
+          audioUrl: audioUrl,
+          coverArtUrl: coverArtUrl
+        });
+
+        setSongHistory(prev => [...prev.slice(0, currentSongIndex + 1), songDetails]);
+        setCurrentSongIndex(prev => prev + 1);
+        setCurrentQueuePosition(nextQueueSong.position);
+
+        await new Promise((resolve) => {
+          audioRef.current.src = audioUrl;
+          audioRef.current.addEventListener('canplaythrough', resolve, { once: true });
+        });
+
+        if (isPlaying) {
+          await audioRef.current.play();
+        }
+      }
+    } else if (currentSongIndex < songHistory.length - 1) {
+      const nextSong = songHistory[currentSongIndex + 1];
+      const filename = nextSong.path.split('\\').pop();
+      const audioUrl = `http://127.0.0.1:5000/api/audio/${filename}`;
+      const coverArtUrl = `http://127.0.0.1:5000/api/cover_art/${nextSong.cover_art.split('/').pop()}`;
+
+      setSongData({
+        ...nextSong,
+        audioUrl: audioUrl,
+        coverArtUrl: coverArtUrl
+      });
+
+      setCurrentSongIndex(prev => prev + 1);
+      audioRef.current.src = audioUrl;
+    } else {
+      await fetchSong();
+      await new Promise((resolve) => {
+        audioRef.current.addEventListener('canplaythrough', resolve, { once: true });
+      });
+    }
+
+    if (isPlaying) {
+      await audioRef.current.play();
+    }
+  };
+
+
   const fetchSong = async () => {
     try {
-      const response = await fetch(apiUrl);
+      const response = await fetch("http://127.0.0.1:5000/api/random_song");
       const data = await response.json();
       const filename = data.path.split('\\').pop();
       const audioUrl = `http://127.0.0.1:5000/api/audio/${filename}`;
@@ -71,80 +224,14 @@ function Player() {
     }
   };
 
-  /*
-  Handle previous songs in the history with an async function to determine
-  1. Is there a previous song?
-  2. Is the time > 2 (to prevent double clicks)
-  Then move forward by going to the previous song and playing if the music was already playing.
-  */
-  const handlePrevious = async () => {
-    if (currentSongIndex > 0) {
-      if (currentTime > 2) {
-        audioRef.current.currentTime = 0;
-        setCurrentTime(0);
-      } else {
-        const previousSong = songHistory[currentSongIndex - 1];
-        const filename = previousSong.path.split('\\').pop();
-        const audioUrl = `http://127.0.0.1:5000/api/audio/${filename}`;
-        const coverArtUrl = `http://127.0.0.1:5000/api/cover_art/${previousSong.cover_art.split('/').pop()}`;
-
-        setSongData({
-          ...previousSong,
-          audioUrl: audioUrl,
-          coverArtUrl: coverArtUrl
-        });
-
-        audioRef.current.currentTime = 0;
-        setCurrentTime(0);
-
-        setCurrentSongIndex(prev => prev - 1);
-        await new Promise((resolve) => {
-          audioRef.current.src = audioUrl;
-          audioRef.current.addEventListener('canplaythrough', resolve, { once: true });
-        });
-        if (isPlaying) {
-          await audioRef.current.play();
-        }
-      }
-    }
-  };
-
-  /*
-  Similarly to handlePrevious, but instead we do another fetchSong() call to do an API call to our backend.
-  This creates a random song that we use to move on, but we have to await for it to load since it is async.
-  */
-  const handleNext = async () => {
-    if (currentSongIndex < songHistory.length - 1) {
-      const nextSong = songHistory[currentSongIndex + 1];
-      const filename = nextSong.path.split('\\').pop();
-      const audioUrl = `http://127.0.0.1:5000/api/audio/${filename}`;
-      const coverArtUrl = `http://127.0.0.1:5000/api/cover_art/${nextSong.cover_art.split('/').pop()}`;
-
-      setSongData({
-        ...nextSong,
-        audioUrl: audioUrl,
-        coverArtUrl: coverArtUrl
-      });
-
-      setCurrentSongIndex(prev => prev + 1);
-      audioRef.current.src = audioUrl;
-    } else {
-      await fetchSong();
-      await new Promise((resolve) => {
-        audioRef.current.addEventListener('canplaythrough', resolve, { once: true });
-      });
-    }
-    if (isPlaying) {
-      await audioRef.current.play();
-    }
-  };
 
   /*
   At the beginning with [] empty dependency, run fetchSong() to grab our first song when starting.
   */
   useEffect(() => {
-    fetchSong();
+    fetchQueue();
   }, []);
+
 
   /*
   Whenever there is a change to our index or songHistory, make sure that the music player moves forward.
@@ -159,6 +246,7 @@ function Player() {
     audio.addEventListener('ended', handleEnded);
     return () => audio.removeEventListener('ended', handleEnded);
   }, [currentSongIndex, songHistory]);
+
 
   /*
   Initialize the audio's event listeners to account for any changes in the data or time.
@@ -185,6 +273,7 @@ function Player() {
     };
   }, []);
 
+
   /*
   Simple check for isPlaying. If the user clicks the play button, then it is playing so start the audio.
   Otherwise, do the opposite.
@@ -196,6 +285,7 @@ function Player() {
       audioRef.current.pause();
     }
   }, [isPlaying]);
+
 
   /*
   Handle new changes in the volume (these will be passed into the VolumeControl component)
@@ -210,6 +300,7 @@ function Player() {
     setCurrentTime(newTime);
   };
 
+
   /*
   Format the time, we are provided seconds through the API, but we want a more readable format. 
   */
@@ -219,6 +310,7 @@ function Player() {
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
+
   /*
   HTML or styling of the components. Will return all the HTML elements once initialized.
   Not much logic here, but lots of building blocks for base components.
@@ -226,7 +318,7 @@ function Player() {
   return (
     <div className="player">
       <div className="player-info">
-        <img src={songData?.coverArtUrl} className="album-cover"/>
+        <img src={songData?.coverArtUrl} className="album-cover" />
         <div className="song-info">
           <h3 className="song-title">{songData?.title}</h3>
           <p className="artist-name">{songData?.artist}</p>
