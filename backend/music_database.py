@@ -251,7 +251,8 @@ def clear_table():  # (N) clears the database by dropping all the tables in the 
     cur = con.cursor()
     cur.executescript('''DROP TABLE IF EXISTS artists;
                         DROP TABLE IF EXISTS songs;
-                        DROP TABLE IF EXISTS albums;''')
+                        DROP TABLE IF EXISTS albums;
+                        DROP TABLE IF EXISTS queue''')
     con.commit()
     cur.close()
 
@@ -472,18 +473,15 @@ def main():  # (N) simple function that is creating the database and adding the 
     song_names = [row[0] for row in cur.fetchall()]
     cur.close()
     print(f"Added {len(song_names)} songs to the database.")
-    populate = False
-    # print(get_from_queue())
-    if populate:
-        add_to_queue(song_names[0])
-        for song in song_names:  # (Jo) Adds songs to the queue
-            add_to_queue(song)
-            print("Current Queue after adding songs:", get_from_queue())
-            # remove_from_queue(1)
-            # print("Updated Queue after removal:", get_from_queue())
-        if not song_names:
-            print("No songs were found in the specified directory.")
-
+    add_to_queue(song_names[0])
+    for song in song_names:  # (Jo) Adds songs to the queue
+        add_to_queue(song)
+        # print("Current Queue after adding songs:", get_from_queue())
+        # remove_from_queue(1)
+        # print("Updated Queue after removal:", get_from_queue())
+    if not song_names:
+        print("No songs were found in the specified directory.")
+    print(get_from_queue())
     con.close()
 
 
