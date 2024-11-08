@@ -341,6 +341,14 @@ def get_from_queue():  # (Jo) will retrieve the current queue
     return queue
 
 
+@app.route('/api/queue', methods=['GET'])
+def get_queue():
+    queue = get_from_queue()
+    queue_list = [{"position": item[0],"title": item[1]} for item in queue]
+        
+    return jsonify(queue_list), 200
+
+
 @app.route("/api/random_song", methods=[
     "GET"])  # (N) API endpoint for getting a random song that will be used temporarily for the forward and backward buttons
 def get_random_song():  # (N) function for getting a random song
