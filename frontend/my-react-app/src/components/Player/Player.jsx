@@ -15,7 +15,8 @@ import PlayerControls from './PlayerControls'
 import ProgressBar from './ProgressBar'
 import VolumeControl from './VolumeControl'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
+import { useQueue } from '../../context/QueueContext';
 
 import defaultImage from '../../assets/default.png'
 
@@ -31,6 +32,18 @@ songHistory and currentSongIndex are just used to keep track of what song is nex
 */
 
 function Player() {
+  const {
+    queue,
+    setCurrentQueuePosition,
+    fetchQueue,
+    getNextInQueue,
+    getPreviousInQueue,
+    hasNext,
+    hasPrevious,
+    getFormattedSongData,
+    prepareSongForPlayback
+  } = useQueue();
+
   const [isPlaying, setIsPlaying] = useState(false);
   const [songData, setSongData] = useState(null);
   const [currentTime, setCurrentTime] = useState(0);
@@ -38,191 +51,87 @@ function Player() {
   const [volume, setVolume] = useState(1);
   const [songHistory, setSongHistory] = useState([]);
   const [currentSongIndex, setCurrentSongIndex] = useState(-1);
-  const [queue, setQueue] = useState([]);
-  const [currentQueuePosition, setCurrentQueuePosition] = useState(null);
 
   const audioRef = useRef(new Audio());
 
-  const fetchSongDetails = async (songName) => {
+  const fetchSong = useCallback(async () => {
     try {
-      const response = await fetch(`http://127.0.0.1:5000/api/song/${encodeURIComponent(songName)}`);
-      if (!response.ok) {
-        throw new Error('Song not found');
-      }
-      return await response.json();
-    } catch (err) {
-      console.error(err);
-      return null;
-    }
-  };
+      const response = await fetch("http://127.0.0.1:5000/api/random_song");
+      const rawData = await response.json();
 
+      const songData = await getFormattedSongData(rawData.title);
 
-  const fetchQueue = async () => {
-    try {
-      const response = await fetch('http://127.0.0.1:5000/api/queue');
-      const data = await response.json();
-      setQueue(data);
+      if (songData) {
+        setSongData(songData.formattedData);
+        setSongHistory(prev => [...prev.slice(0, currentSongIndex + 1), songData.formattedData]);
+        setCurrentSongIndex(prev => prev + 1);
+        audioRef.current.src = songData.formattedData.audioUrl;
 
-      if (data.length > 0) {
-        const startPosition = data[0].position;
-        const songDetails = await fetchSongDetails(data[0].title);
-
-        if (songDetails) {
-          const filename = songDetails.path.split('\\').pop();
-          const audioUrl = `http://127.0.0.1:5000/api/audio/${filename}`;
-          const coverArtUrl = `http://127.0.0.1:5000/api/cover_art/${songDetails.cover_art.split('/').pop()}`;
-
-          setSongData({
-            ...songDetails,
-            audioUrl: audioUrl,
-            coverArtUrl: coverArtUrl
-          });
-
-          setSongHistory(prev => [...prev.slice(0, currentSongIndex + 1), songDetails]);
-          setCurrentSongIndex(prev => prev + 1);
-          setCurrentQueuePosition(startPosition);
-
-          await new Promise((resolve) => {
-            audioRef.current.src = audioUrl;
-            audioRef.current.addEventListener('canplaythrough', resolve, { once: true });
-          });
+        if (isPlaying) {
+          await audioRef.current.play();
         }
       }
     } catch (err) {
       console.error(err);
     }
-  };
+  }, [currentSongIndex, getFormattedSongData, isPlaying]);
 
 
-  /*
-  Handle previous songs in the history with an async function to determine
-  1. Is there a previous song?
-  2. Is the time > 2 (to prevent double clicks)
-  Then move forward by going to the previous song and playing if the music was already playing.
-  */
-  const handlePrevious = async () => {
-    if (currentTime > 2) {
-      audioRef.current.currentTime = 0;
-      setCurrentTime(0);
-    } else {
-      const currentIndex = queue.findIndex(song => song.position === currentQueuePosition);
+  const handleNext = useCallback(async () => {
+    try {
+      console.log(queue, getNextInQueue());
+      if (hasNext()) {
+        const nextQueueSong = getNextInQueue();
+        const songData = await getFormattedSongData(nextQueueSong.title);
 
-      if (currentIndex > 0) {
-        const prevQueueSong = queue[currentIndex - 1];
-        const songDetails = await fetchSongDetails(prevQueueSong.title);
+        if (songData) {
+          setSongData(songData.formattedData);
+          setSongHistory(prev => [...prev.slice(0, currentSongIndex + 1), songData.formattedData]);
+          setCurrentSongIndex(prev => prev + 1);
+          setCurrentQueuePosition(nextQueueSong.position);
 
-        if (songDetails) {
-          const filename = songDetails.path.split('\\').pop();
-          const audioUrl = `http://127.0.0.1:5000/api/audio/${filename}`;
-          const coverArtUrl = `http://127.0.0.1:5000/api/cover_art/${songDetails.cover_art.split('/').pop()}`;
+          audioRef.current.src = songData.formattedData.audioUrl;
+          await songData.prepareForPlayback();
 
-          setSongData({
-            ...songDetails,
-            audioUrl: audioUrl,
-            coverArtUrl: coverArtUrl
-          });
+          if (isPlaying) {
+            await audioRef.current.play();
+          }
+        }
+      } else {
+        await fetchSong();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  }, [currentSongIndex, isPlaying]);
 
+
+  const handlePrevious = useCallback(async () => {
+    try {
+      if (currentTime > 2) {
+        audioRef.current.currentTime = 0;
+        setCurrentTime(0);
+      } else if (hasPrevious()) {
+        const prevQueueSong = getPreviousInQueue();
+        const songData = await getFormattedSongData(prevQueueSong.title);
+
+        if (songData) {
+          setSongData(songData.formattedData);
           setCurrentSongIndex(prev => prev - 1);
           setCurrentQueuePosition(prevQueueSong.position);
 
-          await new Promise((resolve) => {
-            audioRef.current.src = audioUrl;
-            audioRef.current.addEventListener('canplaythrough', resolve, { once: true });
-          });
+          audioRef.current.src = songData.formattedData.audioUrl;
+          await songData.prepareForPlayback();
 
           if (isPlaying) {
             await audioRef.current.play();
           }
         }
       }
-    }
-  };
-
-
-  /*
-  Similarly to handlePrevious, but instead we do another fetchSong() call to do an API call to our backend.
-  This creates a random song that we use to move on, but we have to await for it to load since it is async.
-  */
-  const handleNext = async () => {
-    const currentIndex = queue.findIndex(song => song.position === currentQueuePosition);
-
-    if (currentIndex !== -1 && currentIndex < queue.length - 1) {
-      const nextQueueSong = queue[currentIndex + 1];
-      const songDetails = await fetchSongDetails(nextQueueSong.title);
-
-      if (songDetails) {
-        const filename = songDetails.path.split('\\').pop();
-        const audioUrl = `http://127.0.0.1:5000/api/audio/${filename}`;
-        const coverArtUrl = `http://127.0.0.1:5000/api/cover_art/${songDetails.cover_art.split('/').pop()}`;
-
-        setSongData({
-          ...songDetails,
-          audioUrl: audioUrl,
-          coverArtUrl: coverArtUrl
-        });
-
-        setSongHistory(prev => [...prev.slice(0, currentSongIndex + 1), songDetails]);
-        setCurrentSongIndex(prev => prev + 1);
-        setCurrentQueuePosition(nextQueueSong.position);
-
-        await new Promise((resolve) => {
-          audioRef.current.src = audioUrl;
-          audioRef.current.addEventListener('canplaythrough', resolve, { once: true });
-        });
-
-        if (isPlaying) {
-          await audioRef.current.play();
-        }
-      }
-    } else if (currentSongIndex < songHistory.length - 1) {
-      const nextSong = songHistory[currentSongIndex + 1];
-      const filename = nextSong.path.split('\\').pop();
-      const audioUrl = `http://127.0.0.1:5000/api/audio/${filename}`;
-      const coverArtUrl = `http://127.0.0.1:5000/api/cover_art/${nextSong.cover_art.split('/').pop()}`;
-
-      setSongData({
-        ...nextSong,
-        audioUrl: audioUrl,
-        coverArtUrl: coverArtUrl
-      });
-
-      setCurrentSongIndex(prev => prev + 1);
-      audioRef.current.src = audioUrl;
-    } else {
-      await fetchSong();
-      await new Promise((resolve) => {
-        audioRef.current.addEventListener('canplaythrough', resolve, { once: true });
-      });
-    }
-
-    if (isPlaying) {
-      await audioRef.current.play();
-    }
-  };
-
-
-  const fetchSong = async () => {
-    try {
-      const response = await fetch("http://127.0.0.1:5000/api/random_song");
-      const data = await response.json();
-      const filename = data.path.split('\\').pop();
-      const audioUrl = `http://127.0.0.1:5000/api/audio/${filename}`;
-      const coverArtUrl = `http://127.0.0.1:5000/api/cover_art/${data.cover_art.split('/').pop()}`;
-
-      setSongData({
-        ...data,
-        audioUrl: audioUrl,
-        coverArtUrl: coverArtUrl
-      });
-
-      setSongHistory(prev => [...prev.slice(0, currentSongIndex + 1), data]);
-      setCurrentSongIndex(prev => prev + 1);
-
-      audioRef.current.src = audioUrl;
     } catch (err) {
       console.error(err);
     }
-  };
+  }, [currentTime, hasPrevious, getPreviousInQueue, getFormattedSongData, isPlaying]);
 
 
   /*
@@ -232,6 +141,24 @@ function Player() {
     fetchQueue();
   }, []);
 
+
+  useEffect(() => {
+    const initializeFirstSong = async () => {
+      if (queue.length > 0) {
+        const firstSong = queue[0];
+        const songData = await getFormattedSongData(firstSong.title);
+
+        if (songData) {
+          setSongData(songData.formattedData);
+          setSongHistory(prev => [...prev, songData.formattedData]);
+          setCurrentSongIndex(0);
+          audioRef.current.src = songData.formattedData.audioUrl;
+        }
+      }
+    };
+
+    initializeFirstSong();
+  }, [queue]);
 
   /*
   Whenever there is a change to our index or songHistory, make sure that the music player moves forward.
@@ -245,7 +172,7 @@ function Player() {
 
     audio.addEventListener('ended', handleEnded);
     return () => audio.removeEventListener('ended', handleEnded);
-  }, [currentSongIndex, songHistory]);
+  }, [currentSongIndex, songHistory, handleNext]);
 
 
   /*

@@ -29,7 +29,7 @@ export function QueueProvider({ children }) {
                 setCurrentQueuePosition(data[0].position);
             }
         } catch (err) {
-            console.error('Error fetching queue:', err);
+            console.error(err);
         }
     };
 
@@ -43,7 +43,7 @@ export function QueueProvider({ children }) {
             const songDetails = await response.json();
             return formatSongData(songDetails);
         } catch (err) {
-            console.error('Error fetching song details:', err);
+            console.error(err);
             return null;
         }
     };
@@ -73,11 +73,7 @@ export function QueueProvider({ children }) {
     const addToQueue = async (songName) => {
         try {
             const response = await fetch('http://127.0.0.1:5000/api/add_to_queue', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ song_name: songName })
+                method: 'POST', headers: {'Content-Type': 'application/json',}, body: JSON.stringify({ song_name: songName })
             });
 
             if (!response.ok) {
@@ -86,7 +82,7 @@ export function QueueProvider({ children }) {
 
             await fetchQueue();
         } catch (err) {
-            console.error('Error adding to queue:', err);
+            console.error(err);
         }
     };
 
@@ -94,11 +90,7 @@ export function QueueProvider({ children }) {
     const removeFromQueue = async (position) => {
         try {
             const response = await fetch('http://127.0.0.1:5000/api/remove_from_queue', {
-                method: 'DELETE',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ position: position })
+                method: 'DELETE', headers: {'Content-Type': 'application/json',}, body: JSON.stringify({ position: position })
             });
 
             if (!response.ok) {
@@ -107,7 +99,7 @@ export function QueueProvider({ children }) {
 
             await fetchQueue();
         } catch (err) {
-            console.error('Error removing from queue:', err);
+            console.error(err);
         }
     };
 
