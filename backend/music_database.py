@@ -390,6 +390,34 @@ def get_random_song():  # (N) function for getting a random song
         return jsonify({"error": "No songs found"}), 404
 
 
+@app.route("/api/song/<song_name>", methods=["GET"])
+def get_song_by_name(song_name):
+    con = get_db_connection()
+    cur = con.cursor()
+    
+    cur.execute('''SELECT songs.name, artists.name, albums.name, songs.length, songs.path, songs.cover_art
+                   FROM songs
+                   LEFT JOIN artists ON songs.artist_id = artists.id
+                   LEFT JOIN albums ON songs.album_id = albums.id
+                   WHERE songs.name = ?;''', (song_name,))
+                   
+    song = cur.fetchone()
+    cur.close()
+    con.close()
+
+    if song:
+        return jsonify({
+            "title": song[0] or "Unknown Title",
+            "artist": song[1] or "Unknown Artist",
+            "album": song[2] or "Unknown Album",
+            "length": song[3] or "Unknown Length",
+            "path": song[4],
+            "cover_art": song[5]
+        }), 200
+    else:
+        return jsonify({"message": "No song found"}), 404
+
+
 @app.route("/api/current_song",
            methods=["GET"])  # (N) api endpoint that gets information related to the currently playing song in the queue
 def get_current_song():
