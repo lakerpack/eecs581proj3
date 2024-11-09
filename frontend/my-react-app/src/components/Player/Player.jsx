@@ -67,6 +67,8 @@ function Player() {
         setCurrentSongIndex(prev => prev + 1);
         audioRef.current.src = songData.formattedData.audioUrl;
 
+        await songData.prepareForPlayback();
+
         if (isPlaying) {
           await audioRef.current.play();
         }
@@ -153,6 +155,7 @@ function Player() {
           setSongHistory(prev => [...prev, songData.formattedData]);
           setCurrentSongIndex(0);
           audioRef.current.src = songData.formattedData.audioUrl;
+          await songData.prepareForPlayback();
         }
       }
     };
