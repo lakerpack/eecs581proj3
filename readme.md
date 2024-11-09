@@ -2,7 +2,7 @@
 
 This web application is a music player that allows users to store, play, and manage their music collection. It has a simple UI for play, pause, next, previous, and volume control, built using React and Vite. The backend, built with Flask, handles music storage in an SQLite database and serves metadata and audio files to the frontend.
 
-![UI](./UI.png)
+![UI](./images/UI.png)
 
 ## Features
 
