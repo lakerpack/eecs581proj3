@@ -13,14 +13,17 @@ Side effects: N/A
 import './App.css'
 import Navbar from './components/Navbar/Navbar'
 import Player from './components/Player/Player'
+import { QueueProvider } from './context/QueueContext' 
 
 function App() {
-  return (
-    <div>
-      <Navbar/>
-      <Player/>
-    </div>
-  )
+    return (
+        <QueueProvider>
+            <div>
+                <Navbar/>
+                <Player/>
+            </div>
+        </QueueProvider>
+    )
 }
 
 export default App
