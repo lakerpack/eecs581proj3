@@ -41,7 +41,6 @@ function Player() {
     hasNext,
     hasPrevious,
     getFormattedSongData,
-    prepareSongForPlayback
   } = useQueue();
 
   const [isPlaying, setIsPlaying] = useState(false);
