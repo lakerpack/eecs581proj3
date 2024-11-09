@@ -225,10 +225,7 @@ def add_Dir(music_dir: str = music_directory):
 
 def deleteSong(song_name: str):  # (N) Function that deletes a song from the database
     con = get_db_connection()
-    con = get_db_connection()
     cur = con.cursor()
-    cur.executescript(
-        f'DELETE FROM songs WHERE name = "{song_name}";')  # (N) simple SQL query where it matches the song name and deletes entries based on that
     cur.executescript(
         f'DELETE FROM songs WHERE name = "{song_name}";')  # (N) simple SQL query where it matches the song name and deletes entries based on that
     con.commit()
@@ -236,7 +233,6 @@ def deleteSong(song_name: str):  # (N) Function that deletes a song from the dat
 
 
 def clear_table():  # (N) clears the database by dropping all the tables in the database
-    con = get_db_connection()
     con = get_db_connection()
     cur = con.cursor()
     cur.executescript('''DROP TABLE IF EXISTS artists;
