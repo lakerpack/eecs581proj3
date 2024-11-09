@@ -38,10 +38,6 @@ import random
 
 app = Flask(__name__)
 CORS(app)
-import random
-
-app = Flask(__name__)
-CORS(app)
 
 # (N) this specifies the path for the music_library.db fill that will contain the database
 db_path = os.path.dirname(
@@ -345,6 +341,7 @@ def get_from_queue():  # (Jo) will retrieve the current queue
 def get_queue():
     queue = get_from_queue()
     queue_list = [{"position": item[0],"title": item[1]} for item in queue]
+    print(queue)
         
     return jsonify(queue_list), 200
 
@@ -360,7 +357,7 @@ def get_random_song():  # (N) function for getting a random song
 
     if song_ids:
         random_song_id = random.choice(song_ids)  # (N) grab a random song id and then add that song into the queue
-        cur.execute("INSERT INTO queue (song_id) VALUES (?)", (random_song_id,))
+        # cur.execute("INSERT INTO queue (song_id) VALUES (?)", (random_song_id,))
         con.commit()
 
     # (N) get all the relevant metadata from that song
