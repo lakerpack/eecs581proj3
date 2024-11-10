@@ -1,10 +1,92 @@
-import { createContext, useContext, useState } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect } from 'react';
 
 const QueueContext = createContext();
 
 export function QueueProvider({ children }) {
     const [queue, setQueue] = useState([]);
     const [currentQueuePosition, setCurrentQueuePosition] = useState(null);
+
+    const fetchQueue = async () => {
+        try {
+            const response = await fetch('http://127.0.0.1:5000/api/queue');
+            const data = await response.json();
+            
+            if (data.length > 0) {
+                setQueue(data);
+                if (currentQueuePosition === null) {
+                    setCurrentQueuePosition(data[0].position);
+                }
+            }
+        } catch (err) {
+            console.error(err);
+        }
+    };
+
+
+    const getNextInQueue = useCallback(() => {
+        const currentIndex = queue.findIndex(song => song.position === currentQueuePosition);
+        if (currentIndex !== -1 && currentIndex < queue.length - 1) {
+            return queue[currentIndex + 1];
+        }
+        return null;
+    }, [queue, currentQueuePosition]);
+
+
+    const hasNext = useCallback(() => {
+        const currentIndex = queue.findIndex(song => song.position === currentQueuePosition);
+        return currentIndex !== -1 && currentIndex < queue.length - 1;
+    }, [queue, currentQueuePosition]);
+
+
+    useEffect(() => {
+        if (currentQueuePosition !== null) {
+            fetchQueue();
+        }
+    }, [currentQueuePosition]);
+
+
+    useEffect(() => {
+        if (queue.length > 0 && currentQueuePosition !== null) {
+            const updatedQueue = queue.filter(song => song.position >= currentQueuePosition);
+            if (updatedQueue.length !== queue.length) {
+                setQueue(updatedQueue);
+            }
+        }
+    }, [currentQueuePosition, queue]);
+
+
+    const addToQueue = async (songTitle) => {
+        try {
+            let nextPosition = 1;
+            if (queue.length > 0) {
+                nextPosition = queue[queue.length - 1].position + 1;
+            }
+    
+            const response = await fetch('http://127.0.0.1:5000/api/add_to_queue', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ 
+                    song_name: songTitle
+                })
+            });
+    
+            if (!response.ok) {
+                throw new Error('Failed to add song to queue');
+            }
+    
+            await fetchQueue();
+        } catch (err) {
+            console.error(err);
+        }
+    };
+
+
+    const updateQueuePosition = (position) => {
+        setCurrentQueuePosition(position);
+    };
+
 
     const formatSongData = (songDetails) => {
         const filename = songDetails.path.split('\\').pop();
@@ -16,21 +98,6 @@ export function QueueProvider({ children }) {
             audioUrl,
             coverArtUrl
         };
-    };
-
-
-    const fetchQueue = async () => {
-        try {
-            const response = await fetch('http://127.0.0.1:5000/api/queue');
-            const data = await response.json();
-            setQueue(data);
-
-            if (data.length > 0) {
-                setCurrentQueuePosition(data[0].position);
-            }
-        } catch (err) {
-            console.error(err);
-        }
     };
 
 
@@ -70,23 +137,6 @@ export function QueueProvider({ children }) {
     };
 
 
-    const addToQueue = async (songName) => {
-        try {
-            const response = await fetch('http://127.0.0.1:5000/api/add_to_queue', {
-                method: 'POST', headers: {'Content-Type': 'application/json',}, body: JSON.stringify({ song_name: songName })
-            });
-
-            if (!response.ok) {
-                throw new Error('Failed to add song to queue');
-            }
-
-            await fetchQueue();
-        } catch (err) {
-            console.error(err);
-        }
-    };
-
-
     const removeFromQueue = async (position) => {
         try {
             const response = await fetch('http://127.0.0.1:5000/api/remove_from_queue', {
@@ -104,15 +154,6 @@ export function QueueProvider({ children }) {
     };
 
 
-    const getNextInQueue = () => {
-        const currentIndex = queue.findIndex(song => song.position === currentQueuePosition);
-        if (currentIndex !== -1 && currentIndex < queue.length - 1) {
-            return queue[currentIndex + 1];
-        }
-        return null;
-    };
-
-
     const getPreviousInQueue = () => {
         const currentIndex = queue.findIndex(song => song.position === currentQueuePosition);
         if (currentIndex > 0) {
@@ -121,11 +162,6 @@ export function QueueProvider({ children }) {
         return null;
     };
 
-
-    const hasNext = () => {
-        const currentIndex = queue.findIndex(song => song.position === currentQueuePosition);
-        return currentIndex !== -1 && currentIndex < queue.length - 1;
-    };
 
 
     const hasPrevious = () => {
@@ -137,25 +173,19 @@ export function QueueProvider({ children }) {
     const value = {
         queue,
         currentQueuePosition,
-
-        setQueue,
-        setCurrentQueuePosition,
-
+        setCurrentQueuePosition: updateQueuePosition,  
         fetchQueue,
-        addToQueue,
-        removeFromQueue,
-        fetchSongDetails,
-
         getNextInQueue,
         getPreviousInQueue,
         hasNext,
         hasPrevious,
-
-        formatSongData,
         getFormattedSongData,
-        prepareSongForPlayback
+        prepareSongForPlayback,
+        addToQueue,
+        removeFromQueue
     };
 
+    
     return (
         <QueueContext.Provider value={value}>{children}</QueueContext.Provider>
     );
