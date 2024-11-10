@@ -21,11 +21,14 @@ function App() {
         <QueueProvider>
             <div>
                 <Navbar/>
-                <QueueManager>
+                <div className="main-container">
+                    <div className="queue-section">
+                        <QueueManager />
+                    </div>
                     <div className="player-section">
                         <Player/>
                     </div>
-                </QueueManager>
+                </div>
             </div>
         </QueueProvider>
     );

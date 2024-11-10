@@ -29,6 +29,8 @@ function QueueManager({ children }) {
         removeFromQueue
     } = useQueue();
 
+    const [availableSongs, setAvailableSongs] = useState([]);
+
     /*
     Filter out any songs that have been moved past in the queue.
     */
@@ -117,7 +119,6 @@ function QueueManager({ children }) {
                     ))}
                 </div>
             </div>
-            {children}
             <div className="queue-section">
                 <h2>Queue ({filteredQueue.length} remaining)</h2>
                 <div className="queue-list">
@@ -129,11 +130,12 @@ function QueueManager({ children }) {
                                     <h3>{song.title}</h3>
                                 </div>
                             </div>
-                            <button className="remove-button" onClick={() => handleRemoveFromQueue(song.position)}>×</button>
+                            {/*<button className="remove-button" onClick={() => handleRemoveFromQueue(song.position)}>×</button>*/}
                         </div>
                     ))}
                 </div>
             </div>
+            {children}
         </div>
     );
 }
