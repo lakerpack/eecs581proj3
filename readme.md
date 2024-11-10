@@ -25,6 +25,8 @@ The backend is implemented in Python with Flask, SQLite, and TinyTag for metadat
 - **TinyTag**: Extracts metadata (title, artist, album, duration) from music files.
 - **Mutagen**: Handles album art extraction from MP3 files.
 - **Flask-CORS**: Enables CORS for communication with the frontend.
+- **Werkzeug Security**: Provides password hashing for secure storage.
+- **PyJWT**: Enables secure, token-based authentication.
 
 #### Database Structure
 
@@ -32,17 +34,30 @@ The backend is implemented in Python with Flask, SQLite, and TinyTag for metadat
 - **Albums**: Stores album names with foreign keys referencing artists.
 - **Songs**: Stores song metadata, including title, album, artist, duration, and file path.
 - **Queue**: Manages the play queue for the music player.
+- **Users**: Stores registered user accounts with hashed passwords.
 
-#### API Endpoints
+### API Endpoints
+- **User Authentication**
+  - `/api/register`: Registers a new user by storing their username and hashed password.
+  - `/api/login`: Authenticates a user and returns a JWT token.
+  - `/api/test_entry`: Verifies a user’s token for authentication testing purposes.
 
-- `/api/add_to_queue`: Adds a song to the play queue.
-- `/api/remove_from_queue`: Removes a song from the queue based on position.
-- `/api/queue`: Retrieves the current play queue.
-- `/api/random_song`: Fetches a random song from the database.
-- `/api/song/<song_name>`: Retrieves details for a specific song by name.
-- `/api/current_song`: Gets the currently playing song.
-- `/api/all_songs`: Retrieves all songs in the database.
-- `/api/cover_art/<filename>`: Serves album cover art.
+- **Music Library**
+  - `/api/add_to_queue`: Adds a song to the play queue.
+  - `/api/remove_from_queue`: Removes a song from the queue based on position.
+  - `/api/queue`: Retrieves the current play queue.
+  - `/api/random_song`: Fetches a random song from the database.
+  - `/api/song/<song_name>`: Retrieves details for a specific song by name.
+  - `/api/current_song`: Gets the currently playing song.
+  - `/api/all_songs`: Retrieves all songs in the database.
+  - `/api/cover_art/<filename>`: Serves album cover art.
+ 
+### New User Account Management and Authentication
+1. **Registering a User**: Users can register a new account using the `/api/register` endpoint.
+2. **Logging In**: Users can log in to receive a token, which is used for authentication.
+3. **Token-Based Authentication**: The app uses JWT tokens, which are sent in the `Authorization` header (formatted as `Bearer <token>`) to authenticate users.
+
+---
 
 ### Setting Up the Backend
 
