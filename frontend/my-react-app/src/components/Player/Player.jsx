@@ -4,6 +4,7 @@ Description: React component that's built up of multiple components to provide t
 Name: Anil Thapa
 Date: 10/26/2024
 Revised: 10/27/2024 (Integrating with Backend -- Anil)
+Revised: 10/09/2024 (Integrating with the new context and QueueManager)
 Preconditions: N/A
 Postconditions: Provides an interface for music
 Error and exception conditions: Mistakes in the backend

@@ -1,3 +1,15 @@
+/*
+Artifact(s): Queue system
+Description: React context to share states between the QueueManager and Player
+Name: Anil Thapa
+Date: 10/07/2024
+Revised: 10/09/2024 (Integrating with Backend -- Anil)
+Preconditions: Information in the API about the queue and loaded Player/QueueManager
+Postconditions: Provides state management for queue
+Error and exception conditions: Rapid changes in positions that can cause race conditions and resource errors
+Side effects: N/A
+*/
+
 import { createContext, useContext, useState, useCallback, useEffect } from 'react';
 
 const QueueContext = createContext();
