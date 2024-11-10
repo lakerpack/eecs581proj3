@@ -13,6 +13,7 @@ Side effects: N/A
 import './App.css'
 import Navbar from './components/Navbar/Navbar'
 import Player from './components/Player/Player'
+import QueueManager from './components/QueueManager/QueueManager'
 import { QueueProvider } from './context/QueueContext' 
 
 function App() {
@@ -20,10 +21,14 @@ function App() {
         <QueueProvider>
             <div>
                 <Navbar/>
-                <Player/>
+                <QueueManager>
+                    <div className="player-section">
+                        <Player/>
+                    </div>
+                </QueueManager>
             </div>
         </QueueProvider>
-    )
+    );
 }
 
 export default App
