@@ -48,11 +48,6 @@ def get_db_connection():
     return sql.connect(db_path)  # (N) creates the db with that path
 
 
-
-def get_db_connection():
-    return sql.connect(db_path)  # (N) creates the db with that path
-
-
 '''
 (N) function in charge of creating the tables in the database that will store the info of artists, albums, and songs
 taken from the github referenced in sources.
@@ -60,7 +55,6 @@ taken from the github referenced in sources.
 
 
 def create_table():
-    con = get_db_connection()
     con = get_db_connection()
     cur = con.cursor()  # (N) create a cursor object that allows you to execute SQL commands
 
@@ -117,7 +111,6 @@ def create_table():
 
 # (N) Function in charge of adding a single song to the database
 def add_Song(music_file_path: str):
-    con = get_db_connection()
     con = get_db_connection()
     cur = con.cursor()
 
@@ -203,6 +196,7 @@ print(current_dir)
 Referenced from the github repository in references
 '''
 
+
 def add_Dir(music_dir: str = music_directory):
     # (N) making sure the path to the directory with music stored is a valid path
     if not os.path.isdir(music_dir):
@@ -231,10 +225,7 @@ def add_Dir(music_dir: str = music_directory):
 
 def deleteSong(song_name: str):  # (N) Function that deletes a song from the database
     con = get_db_connection()
-    con = get_db_connection()
     cur = con.cursor()
-    cur.executescript(
-        f'DELETE FROM songs WHERE name = "{song_name}";')  # (N) simple SQL query where it matches the song name and deletes entries based on that
     cur.executescript(
         f'DELETE FROM songs WHERE name = "{song_name}";')  # (N) simple SQL query where it matches the song name and deletes entries based on that
     con.commit()
@@ -242,7 +233,6 @@ def deleteSong(song_name: str):  # (N) Function that deletes a song from the dat
 
 
 def clear_table():  # (N) clears the database by dropping all the tables in the database
-    con = get_db_connection()
     con = get_db_connection()
     cur = con.cursor()
     cur.executescript('''DROP TABLE IF EXISTS artists;
@@ -269,12 +259,13 @@ def add_to_queue(song_name: str):  # (Ja) function that adds a song to the queue
     else:
         print(f" Song: '{song_name}', was not found in the library.")  # (Ja) print a message if the songs not found
 
-        print(f"Error: Song '{song_name}' was not found in the library.")  # (Ja) print a message if the song's not found
+        print(
+            f"Error: Song '{song_name}' was not found in the library.")  # (Ja) print a message if the song's not found
         success = False
 
     cur.close()
     return success
-    
+
 
 @app.route("/api/add_to_queue", methods=["POST"])
 def api_add_to_queue():
@@ -288,8 +279,8 @@ def api_add_to_queue():
         return jsonify({"message": ["success"]}), 200  # (Ja) success response
     else:
         return jsonify({"error": ["song not found"]}), 404  # (Ja) error response, if song not found
-        
-    
+
+
 def remove_from_queue(position: int):  # (Ja) function that removes a song from the queue based on its position
     con = get_db_connection()
     cur = con.cursor()
@@ -300,7 +291,8 @@ def remove_from_queue(position: int):  # (Ja) function that removes a song from 
 
     # (Ja) if the song exists at the position, delete it
     if song_exists:
-        cur.execute("DELETE FROM queue WHERE position = ?", (position,)) # (Ja) delete the song at the specified position in the queue
+        cur.execute("DELETE FROM queue WHERE position = ?",
+                    (position,))  # (Ja) delete the song at the specified position in the queue
         con.commit()
         message = f"Removed song at position {position} from the queue."
         success = True
@@ -313,7 +305,7 @@ def remove_from_queue(position: int):  # (Ja) function that removes a song from 
 
     return {"success": success, "message": message}
 
-    
+
 @app.route("/api/remove_from_queue", methods=["DELETE"])
 def api_remove_from_queue():
     data = request.json  # (Ja) getting the json data from the request
@@ -340,9 +332,9 @@ def get_from_queue():  # (Jo) will retrieve the current queue
 @app.route('/api/queue', methods=['GET'])
 def get_queue():
     queue = get_from_queue()
-    queue_list = [{"position": item[0],"title": item[1]} for item in queue]
+    queue_list = [{"position": item[0], "title": item[1]} for item in queue]
     print(queue)
-        
+
     return jsonify(queue_list), 200
 
 
@@ -391,13 +383,13 @@ def get_random_song():  # (N) function for getting a random song
 def get_song_by_name(song_name):
     con = get_db_connection()
     cur = con.cursor()
-    
+
     cur.execute('''SELECT songs.name, artists.name, albums.name, songs.length, songs.path, songs.cover_art
                    FROM songs
                    LEFT JOIN artists ON songs.artist_id = artists.id
                    LEFT JOIN albums ON songs.album_id = albums.id
                    WHERE songs.name = ?;''', (song_name,))
-                   
+
     song = cur.fetchone()
     cur.close()
     con.close()
@@ -432,7 +424,6 @@ def get_current_song():
     cur.close()
     con.close()
 
-
     # (Ja) if the song is retrieved from the query, return its details
     if current_song:  # (N) use jsonify to give all of the information in JSON response format so that it can be accessed by the frontend
         return jsonify({
@@ -455,7 +446,7 @@ def serve_audio(filename):
     return send_file(file_path)
 
 
-@app.route('/api/all_songs', 
+@app.route('/api/all_songs',
            methods=['GET'])
 def get_all_songs():
     con = get_db_connection()
@@ -469,7 +460,7 @@ def get_all_songs():
     get_all_songs = cur.fetchall()
     cur.close()
     con.close()
-    
+
     # (N) Format the result as a list of dictionaries for JSON serialization
     if get_all_songs:
         songs = []
@@ -483,7 +474,7 @@ def get_all_songs():
                 "cover_art": song[5]
             }
             songs.append(song_obj)
-            
+
         return jsonify(songs), 200
     else:
         return jsonify({"message": "No songs in library!"}), 404
@@ -492,6 +483,21 @@ def get_all_songs():
 @app.route('/api/cover_art/<path:filename>')
 def serve_cover_art(filename):
     return send_file(f'cover_art/{filename}')
+
+
+@app.route('/api/upload_file', methods=['POST'])
+def upload_file():
+    if 'file' not in request.files:
+        return jsonify({"error": "No file part in the request available"})
+
+    file = request.files['file']
+
+    if file.filename == '':
+        return jsonify({"error": "No selected file"}), 400
+
+    file.save(os.path.join("Music", file.filename))
+    add_Dir()
+    return jsonify({"message": f"File {file.filename} has been uploaded successfully"}), 200
 
 
 def main():  # (N) simple function that is creating the database and adding the songs from the default path (Music directory contained in the repository)
@@ -516,7 +522,6 @@ def main():  # (N) simple function that is creating the database and adding the 
         print("No songs were found in the specified directory.")
     print(get_from_queue())
     con.close()
-
 
 
 main()
