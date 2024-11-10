@@ -225,13 +225,12 @@ def add_Dir(music_dir: str = music_directory):
             names.append(
                 name)  # (N) adding the name of the song that was added to a list of names to keep track of songs added
 
+    return n, names  # (N) return the number of songs and the names of the songs that were addes
+
 
 def deleteSong(song_name: str):  # (N) Function that deletes a song from the database
     con = get_db_connection()
-    con = get_db_connection()
     cur = con.cursor()
-    cur.executescript(
-        f'DELETE FROM songs WHERE name = "{song_name}";')  # (N) simple SQL query where it matches the song name and deletes entries based on that
     cur.executescript(
         f'DELETE FROM songs WHERE name = "{song_name}";')  # (N) simple SQL query where it matches the song name and deletes entries based on that
     con.commit()
@@ -240,7 +239,6 @@ def deleteSong(song_name: str):  # (N) Function that deletes a song from the dat
 
 def clear_table():  # (N) clears the database by dropping all the tables in the database
     con = get_db_connection()
-    con = get_db_connection()
     cur = con.cursor()
     cur.executescript('''DROP TABLE IF EXISTS artists;
                         DROP TABLE IF EXISTS songs;
@@ -248,6 +246,7 @@ def clear_table():  # (N) clears the database by dropping all the tables in the 
                         DROP TABLE IF EXISTS queue''')
     con.commit()
     cur.close()
+
 
 
 def add_to_queue(song_name: str):  # (Ja) function that adds a song to the queue by its name
