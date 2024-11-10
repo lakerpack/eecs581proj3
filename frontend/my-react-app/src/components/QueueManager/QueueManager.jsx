@@ -120,7 +120,7 @@ function QueueManager({ children }) {
                 </div>
             </div>
             <div className="queue-section">
-                <h2>Queue ({filteredQueue.length} remaining)</h2>
+                <h2>Queue {/*({filteredQueue.length} remaining)*/}</h2>
                 <div className="queue-list">
                     {filteredQueue.map((song) => (
                         <div key={`queue-${song.position}-${song.title}`} className={`queue-item ${song.position === currentQueuePosition ? 'current-song' : ''}`}>
