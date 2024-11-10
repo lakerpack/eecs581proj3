@@ -1,6 +1,24 @@
+/*
+Artifact(s): Queue system
+Description: React context to share states between the QueueManager and Player
+Name: Anil Thapa
+Date: 11/07/2024
+Revised: 11/09/2024 (Bugfixing -- Anil)
+Preconditions: Information about the queue from QueueContext
+Postconditions: Alters the state of the queue
+Error and exception conditions: Rapid changes in positions that can cause race conditions and resource errors
+Side effects: N/A
+*/
+
 import { useState, useEffect, useMemo } from 'react';
 import { useQueue } from '../../context/QueueContext';
 import './QueueManager.css';
+
+/*
+Meant to handle the queue management and keep Player separate and complete enough. As a result of Player splitting,
+we use a QueueContext to handle states between the two components. QueueManager manages the library display and the 
+queue visualization (also has the Player component wrapped inside for styling). 
+*/
 
 function QueueManager({ children }) {
     const {
@@ -11,12 +29,17 @@ function QueueManager({ children }) {
         removeFromQueue
     } = useQueue();
 
-
+    /*
+    Filter out any songs that have been moved past in the queue.
+    */
     const filteredQueue = useMemo(() => {
         return queue.filter(song => song.position >= currentQueuePosition);
     }, [queue, currentQueuePosition]);
 
-
+    /*
+    Store the complete library of available songs so we can provide the user an option to add 
+    a song of their choosing provided it's in the backend library. 
+    */
     useEffect(() => {
         const fetchAvailableSongs = async () => {
             try {
@@ -31,7 +54,9 @@ function QueueManager({ children }) {
         fetchAvailableSongs();
     }, []);
 
-
+    /*
+    Whenever we move forward in the queue, we update the queue on our end. 
+    */
     useEffect(() => {
         const updateQueue = async () => {
             await fetchQueue();
@@ -39,10 +64,13 @@ function QueueManager({ children }) {
         updateQueue();
     }, [currentQueuePosition]); 
 
-
+    /*
+    Add songs to the shared queue and interface with the context when adding a song. 
+    This is meant to update the queue for both the Player and the QueueManager.
+    */
     const handleAddToQueue = async (songTitle) => {
         try {
-            const currentPosition = currentQueuePosition; 
+            // const currentPosition = currentQueuePosition; 
             await addToQueue(songTitle);
             await fetchQueue();
         } catch (err) {
@@ -50,12 +78,16 @@ function QueueManager({ children }) {
         }
     };
 
-
+    /*
+    Get the initial queue state
+    */
     useEffect(() => {
         fetchQueue();
     }, []); 
 
-
+    /*
+    Remove songs from the shared queue
+    */
     const handleRemoveFromQueue = async (position) => {
         try {
             await removeFromQueue(position);
@@ -64,11 +96,6 @@ function QueueManager({ children }) {
             console.error(err);
         }
     };
-
-
-    useEffect(() => {
-        console.log('Queue updated:', queue);
-    }, [queue]);
 
 
     return (

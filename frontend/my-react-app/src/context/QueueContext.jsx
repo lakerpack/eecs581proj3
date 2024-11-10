@@ -2,8 +2,8 @@
 Artifact(s): Queue system
 Description: React context to share states between the QueueManager and Player
 Name: Anil Thapa
-Date: 10/07/2024
-Revised: 10/09/2024 (Integrating with Backend -- Anil)
+Date: 11/07/2024
+Revised: 11/09/2024 (Bugfixing -- Anil)
 Preconditions: Information in the API about the queue and loaded Player/QueueManager
 Postconditions: Provides state management for queue
 Error and exception conditions: Rapid changes in positions that can cause race conditions and resource errors

@@ -1,11 +1,11 @@
 /*
-Artifact(s): Play Button, Stop Button, Next Button, Prev Button, Progress Bar, Volume Button, Artist Name, Song Title
+Artifact(s): Play Button, Stop Button, Next Button, Prev Button, Progress Bar, Volume Button, Artist Name, Song Title, Album Art
 Description: React component that's built up of multiple components to provide the complete music player that can run independently. 
 Name: Anil Thapa
 Date: 10/26/2024
 Revised: 10/27/2024 (Integrating with Backend -- Anil)
-Revised: 10/09/2024 (Integrating with the new context and QueueManager)
-Preconditions: N/A
+Revised: 11/09/2024 (Integrating with the new context and QueueManager)
+Preconditions: Information about the queue from QueueContext
 Postconditions: Provides an interface for music
 Error and exception conditions: Mistakes in the backend
 Side effects: N/A
