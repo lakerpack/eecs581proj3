@@ -11,6 +11,7 @@ Side effects: N/A
 */
 
 import { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import defaultImage from '../assets/default.png';
 
 const QueueContext = createContext();
 
@@ -127,7 +128,7 @@ export function QueueProvider({ children }) {
     const formatSongData = (songDetails) => {
         const filename = songDetails.path.split('\\').pop();
         const audioUrl = `http://127.0.0.1:5000/api/audio/${filename}`;
-        const coverArtUrl = `http://127.0.0.1:5000/api/cover_art/${songDetails.cover_art.split('/').pop()}`;
+        const coverArtUrl = songDetails.cover_art ? `http://127.0.0.1:5000/api/cover_art/${songDetails.cover_art.split('/').pop()}`: defaultImage;
 
         return {
             ...songDetails,

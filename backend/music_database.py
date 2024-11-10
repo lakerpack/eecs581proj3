@@ -513,7 +513,7 @@ def main():  # (N) simple function that is creating the database and adding the 
     cur.close()
     print(f"Added {len(song_names)} songs to the database.")
     add_to_queue(song_names[0])
-    for song in song_names:  # (Jo) Adds songs to the queue
+    for song in song_names[:4+1]:  # (Jo) Adds songs to the queue
         add_to_queue(song)
         # print("Current Queue after adding songs:", get_from_queue())
         # remove_from_queue(1)
