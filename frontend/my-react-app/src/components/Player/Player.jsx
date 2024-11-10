@@ -42,6 +42,9 @@ function Player() {
     prepareSongForPlayback
   } = useQueue();
 
+  /*
+  State management for data
+  */
   const [isPlaying, setIsPlaying] = useState(false);
   const [songData, setSongData] = useState(null);
   const [currentTime, setCurrentTime] = useState(0);
@@ -55,6 +58,10 @@ function Player() {
 
   const audioRef = useRef(new Audio());
 
+  /*
+  Fetch a random song from the backend when there are no more songs in the queue
+  API call to random_song --> Format song --> Update song history and current index --> Prepare for audio callback
+  */
   const fetchSong = useCallback(async () => {
     try {
       const response = await fetch("http://127.0.0.1:5000/api/random_song");
@@ -79,7 +86,11 @@ function Player() {
     }
   }, [currentSongIndex, getFormattedSongData, isPlaying]);
 
-
+  /*
+  Handle transitions to the next song from either the queue or a random song (if index is at the end of queue)
+  Race condition check with isTransitioning and then manages loading state
+  Clean current audio --> get next song in queue or random --> format and load song --> update queue position --> handle playback
+  */
   const handleNext = useCallback(async () => {
     if (isTransitioning) return;
     setIsTransitioning(true);
@@ -153,7 +164,10 @@ function Player() {
     }
   }, [currentSongIndex, isPlaying, hasNext, getNextInQueue, getFormattedSongData]);
 
-
+  /*
+  Manage backward navigation through song history (doesn't affect queue history as of now, will only start at the end of queue)
+  Resets current song if within 2 seconds otherwise move to previous song; important to note it doesn't reset queue position 
+  */
   const handlePrevious = useCallback(async () => {
     try {
       if (currentTime > 2) {
@@ -178,11 +192,17 @@ function Player() {
   }, [currentTime, currentSongIndex, songHistory, isPlaying]);
 
 
+  /*
+  Queue initialization when first loading the component
+  */
   useEffect(() => {
     fetchQueue();
   }, []);
 
-
+  /*
+  Load the first song -->WHEN<-- the queue becomes available then check for queue content
+  Format the first song --> initialize the player with the first song --> then prepare audio playback
+  */
   useEffect(() => {
     const initializeFirstSong = async () => {
       if (queue.length > 0) {
@@ -202,7 +222,9 @@ function Player() {
     initializeFirstSong();
   }, [queue]);
 
-
+  /*
+  Track whenever the current song ends then automatically go to the next song.
+  */
   useEffect(() => {
     const audio = audioRef.current;
     const handleEnded = async () => {
@@ -218,7 +240,9 @@ function Player() {
     return () => audio.removeEventListener('ended', handleEnded);
   }, [handleNext, isPlaying]);
 
-  
+  /*
+  Clean audio and stop playback when component is not loaded 
+  */
   useEffect(() => {
     const audio = audioRef.current;
 
@@ -231,7 +255,9 @@ function Player() {
     };
   }, []);
 
-
+  /*
+  Manage play and pause transitions as well as the play promises. Prevent any state conflicts during loading
+  */
   useEffect(() => {
     if (isLoading || !audioRef.current.src) return;
 
@@ -263,7 +289,9 @@ function Player() {
     handlePlayPause();
   }, [isPlaying, isLoading]);
 
-
+  /*
+  Set up all the audio event listeners (manage audio metadata loading --> update time/duration --> handle playback --> manage can playthrough)
+  */
   useEffect(() => {
     const audio = audioRef.current;
     const handleLoadedData = async () => {
