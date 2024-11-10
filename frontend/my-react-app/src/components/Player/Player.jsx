@@ -37,10 +37,9 @@ function Player() {
     setCurrentQueuePosition,
     fetchQueue,
     getNextInQueue,
-    getPreviousInQueue,
     hasNext,
-    hasPrevious,
     getFormattedSongData,
+    prepareSongForPlayback
   } = useQueue();
 
   const [isPlaying, setIsPlaying] = useState(false);
@@ -50,6 +49,9 @@ function Player() {
   const [volume, setVolume] = useState(1);
   const [songHistory, setSongHistory] = useState([]);
   const [currentSongIndex, setCurrentSongIndex] = useState(-1);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const [isTransitioning, setIsTransitioning] = useState(false);
 
   const audioRef = useRef(new Audio());
 
@@ -79,32 +81,77 @@ function Player() {
 
 
   const handleNext = useCallback(async () => {
+    if (isTransitioning) return;
+    setIsTransitioning(true);
     try {
-      console.log(queue, getNextInQueue());
+      const wasPlaying = isPlaying;
+      setIsLoading(true);
+      setIsPlaying(false);
+
+      if (audioRef.current) {
+        const audio = audioRef.current;
+        audio.pause();
+        audio.currentTime = 0;
+        audio.src = '';
+        await new Promise(resolve => setTimeout(resolve, 100)); 
+      }
+
       if (hasNext()) {
         const nextQueueSong = getNextInQueue();
+        if (!nextQueueSong) return;
+
         const songData = await getFormattedSongData(nextQueueSong.title);
+        if (!songData) {
+          console.error("Could not get song data for:", nextQueueSong.title);
+          return;
+        }
 
-        if (songData) {
-          setSongData(songData.formattedData);
-          setSongHistory(prev => [...prev.slice(0, currentSongIndex + 1), songData.formattedData]);
-          setCurrentSongIndex(prev => prev + 1);
-          setCurrentQueuePosition(nextQueueSong.position);
+        setSongData(songData.formattedData);
+        setSongHistory(prev => [...prev.slice(0, currentSongIndex + 1), songData.formattedData]);
+        setCurrentSongIndex(prev => prev + 1);
+        setCurrentQueuePosition(nextQueueSong.position);
 
-          audioRef.current.src = songData.formattedData.audioUrl;
-          await songData.prepareForPlayback();
+        const audio = audioRef.current;
+        audio.src = songData.formattedData.audioUrl;
 
-          if (isPlaying) {
-            await audioRef.current.play();
+        await new Promise((resolve, reject) => {
+          const loadHandler = () => {
+            resolve();
+            audio.removeEventListener('canplaythrough', loadHandler);
+            audio.removeEventListener('error', errorHandler);
+          };
+
+          const errorHandler = (error) => {
+            reject(error);
+            audio.removeEventListener('canplaythrough', loadHandler);
+            audio.removeEventListener('error', errorHandler);
+          };
+
+          audio.addEventListener('canplaythrough', loadHandler);
+          audio.addEventListener('error', errorHandler);
+          audio.load();
+        });
+
+        if (wasPlaying) {
+          try {
+            await audio.play();
+            setIsPlaying(true);
+          } catch (playError) {
+            console.error("Could not auto-play next song:", playError);
+            setIsPlaying(false);
           }
         }
       } else {
         await fetchSong();
       }
     } catch (err) {
-      console.error(err);
+      console.error("Error in handleNext:", err);
+      setIsPlaying(false);
+    } finally {
+      setIsLoading(false);
+      setIsTransitioning(false);
     }
-  }, [currentSongIndex, isPlaying]);
+  }, [currentSongIndex, isPlaying, hasNext, getNextInQueue, getFormattedSongData]);
 
 
   const handlePrevious = useCallback(async () => {
@@ -112,32 +159,25 @@ function Player() {
       if (currentTime > 2) {
         audioRef.current.currentTime = 0;
         setCurrentTime(0);
-      } else if (hasPrevious()) {
-        const prevQueueSong = getPreviousInQueue();
-        const songData = await getFormattedSongData(prevQueueSong.title);
+      } else if (currentSongIndex > 0) { 
+        const previousSong = songHistory[currentSongIndex - 1];
 
-        if (songData) {
-          setSongData(songData.formattedData);
-          setCurrentSongIndex(prev => prev - 1);
-          setCurrentQueuePosition(prevQueueSong.position);
+        setSongData(previousSong);
+        setCurrentSongIndex(prev => prev - 1);
 
-          audioRef.current.src = songData.formattedData.audioUrl;
-          await songData.prepareForPlayback();
+        audioRef.current.src = previousSong.audioUrl;
+        await prepareSongForPlayback(previousSong);
 
-          if (isPlaying) {
-            await audioRef.current.play();
-          }
+        if (isPlaying) {
+          await audioRef.current.play();
         }
       }
     } catch (err) {
-      console.error(err);
+      console.error("Error in handlePrevious:", err);
     }
-  }, [currentTime, hasPrevious, getPreviousInQueue, getFormattedSongData, isPlaying]);
+  }, [currentTime, currentSongIndex, songHistory, isPlaying]);
 
 
-  /*
-  At the beginning with [] empty dependency, run fetchSong() to grab our first song when starting.
-  */
   useEffect(() => {
     fetchQueue();
   }, []);
@@ -162,57 +202,118 @@ function Player() {
     initializeFirstSong();
   }, [queue]);
 
-  /*
-  Whenever there is a change to our index or songHistory, make sure that the music player moves forward.
-  */
+
   useEffect(() => {
     const audio = audioRef.current;
-
-    const handleEnded = () => {
-      handleNext();
+    const handleEnded = async () => {
+      const wasPlaying = isPlaying;
+      setIsPlaying(false);
+      await handleNext();
+      if (wasPlaying) {
+        setIsPlaying(true);
+      }
     };
 
     audio.addEventListener('ended', handleEnded);
     return () => audio.removeEventListener('ended', handleEnded);
-  }, [currentSongIndex, songHistory, handleNext]);
+  }, [handleNext, isPlaying]);
 
-
-  /*
-  Initialize the audio's event listeners to account for any changes in the data or time.
-  This occurs at the beginning and doesn't need to be initialized again since it's just function setups. 
-  */
+  
   useEffect(() => {
     const audio = audioRef.current;
 
-    const setAudioData = () => {
-      setDuration(audio.duration);
-      setCurrentTime(audio.currentTime);
-    };
-
-    const setTimeUpdate = () => {
-      setCurrentTime(audio.currentTime);
-    };
-
-    audio.addEventListener('loadeddata', setAudioData);
-    audio.addEventListener('timeupdate', setTimeUpdate);
-
     return () => {
-      audio.removeEventListener('loadeddata', setAudioData);
-      audio.removeEventListener('timeupdate', setTimeUpdate);
+      if (audio) {
+        audio.pause();
+        audio.src = '';
+        audio.load();
+      }
     };
   }, []);
 
 
-  /*
-  Simple check for isPlaying. If the user clicks the play button, then it is playing so start the audio.
-  Otherwise, do the opposite.
-  */
   useEffect(() => {
-    if (isPlaying) {
-      audioRef.current.play();
-    } else {
-      audioRef.current.pause();
-    }
+    if (isLoading || !audioRef.current.src) return;
+
+    let playPromise;
+    const handlePlayPause = async () => {
+      try {
+        if (isPlaying && audioRef.current.paused) {
+          if (playPromise) {
+            await playPromise;
+          }
+          playPromise = audioRef.current.play();
+          if (playPromise) {
+            await playPromise;
+          }
+        } else if (!isPlaying && !audioRef.current.paused) {
+          if (playPromise) {
+            await playPromise;
+          }
+          audioRef.current.pause();
+        }
+      } catch (err) {
+        if (!err.message.includes('aborted')) {
+          console.error("Error in play/pause handling:", err);
+          setIsPlaying(false);
+        }
+      }
+    };
+
+    handlePlayPause();
+  }, [isPlaying, isLoading]);
+
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    const handleLoadedData = async () => {
+      setDuration(audio.duration);
+      setCurrentTime(audio.currentTime);
+
+      if (isPlaying) {
+        try {
+          const playPromise = audio.play();
+          if (playPromise !== undefined) {
+            await playPromise;
+          }
+        } catch (err) {
+          if (!err.message.includes('aborted')) {
+            console.error("Error auto-playing after load:", err);
+            setIsPlaying(false);
+          }
+        }
+      }
+    };
+
+    const handleTimeUpdate = () => {
+      setCurrentTime(audio.currentTime);
+    };
+
+    const handleCanPlayThrough = async () => {
+      if (isPlaying && audio.paused) {
+        try {
+          const playPromise = audio.play();
+          if (playPromise !== undefined) {
+            await playPromise;
+          }
+        } catch (err) {
+          if (!err.message.includes('aborted')) {
+            console.error("Error playing on canplaythrough:", err);
+            setIsPlaying(false);
+          }
+        }
+      }
+    };
+
+    audio.addEventListener('loadeddata', handleLoadedData);
+    audio.addEventListener('timeupdate', handleTimeUpdate);
+    audio.addEventListener('canplaythrough', handleCanPlayThrough);
+
+    return () => {
+      audio.removeEventListener('loadeddata', handleLoadedData);
+      audio.removeEventListener('timeupdate', handleTimeUpdate);
+      audio.removeEventListener('canplaythrough', handleCanPlayThrough);
+    };
   }, [isPlaying]);
 
 
@@ -246,9 +347,10 @@ function Player() {
   */
   return (
     <div className="player">
+      {isLoading && <div className="loading-indicator">Loading...</div>}
       <div className="player-info">
         <img src={songData?.coverArtUrl} className="album-cover" />
-        <div className="song-info">
+        <div>
           <h3 className="song-title">{songData?.title}</h3>
           <p className="artist-name">{songData?.artist}</p>
         </div>
