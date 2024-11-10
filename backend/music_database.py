@@ -2,10 +2,10 @@
 Name: Music Database
 Description: Database that will store and allow the retrieval of music as well as relevant
 metadata of the music files for use in other functions and to have a library of music needed
-for the implementation of the music player. Creates a database and has functions needed for
-adding songs and deleting songs.
+for the implementation of the music player. Implements user account functionality for registration
+and authentication. Creates a database and has functions needed for adding songs and deleting songs.
 Other Sources: ChatGPT, https://github.com/ahmedheakl/Music_Player_App_Using_Tkinter_MySQL/tree/main
-Author(s): Nathan Bui, Jaret Priddy, Justin Owolabi
+Author(s): Nathan Bui, Jaret Priddy, Justin Owolabi, ChatGPT
 Creation Date: 10/23/2024
 """
 
@@ -18,8 +18,6 @@ Creation Date: 10/23/2024
 -tinytag is used for extracting the relevant metadata from a song file when given a path
 -random is for randomly generating stuff
 the only one included in the requirements.txt file are tinytag and flask since the others are part 
--random is for randomly generating stuff
-the only one included in the requirements.txt file are tinytag and flask since the others are part 
 of python3 by default
 
 !!!A LOT OF THE PROGRAM WAS TAKEN FROM THE GITHUB PROJECT LISTED AS A SOURCE, WITH SOME MODIFICATIONS
@@ -29,12 +27,20 @@ from flask import Flask, jsonify, request, send_file
 from flask_cors import CORS
 from mutagen.mp3 import MP3
 from mutagen.id3 import ID3, APIC
-from flask import Flask, jsonify, request, send_file
-from flask_cors import CORS
 import os
 import sqlite3 as sql
 from tinytag import TinyTag
 import random
+from werkzeug.security import generate_password_hash, check_password_hash
+import jwt
+from datetime import datetime, timedelta
+from functools import wraps
+
+app = Flask(__name__)
+CORS(app)
+
+# (Ja) Secret key for JWT
+SECRET_KEY = 'eecs581'
 
 app = Flask(__name__)
 CORS(app)
@@ -55,6 +61,7 @@ taken from the github referenced in sources.
 
 
 def create_table():
+    con = get_db_connection()
     con = get_db_connection()
     cur = con.cursor()  # (N) create a cursor object that allows you to execute SQL commands
 
@@ -80,7 +87,7 @@ def create_table():
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL DEFAULT "UNKNOWN",
                 artist_id INTEGER DEFAULT 0,
-                UNIQUE (name,artist_id),
+                UNIQUE (name, artist_id),
                 FOREIGN KEY (artist_id) REFERENCES artists(id) ON DELETE SET DEFAULT
             ); 
             CREATE TABLE IF NOT EXISTS songs (
@@ -102,15 +109,24 @@ def create_table():
             CREATE TABLE IF NOT EXISTS queue (
                 position INTEGER PRIMARY KEY AUTOINCREMENT,
                 song_id INTEGER,
-                FOREIGN KEY (song_id) REFERENCES songs(id) ON DELETE CASCADE);
-            ''')
+                FOREIGN KEY (song_id) REFERENCES songs(id) ON DELETE CASCADE
+            );
+    
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT NOT NULL UNIQUE,
+                password_hash TEXT NOT NULL
+            );
+        ''')
 
     con.commit()
     cur.close()
+    con.close()
 
 
 # (N) Function in charge of adding a single song to the database
 def add_Song(music_file_path: str):
+    con = get_db_connection()
     con = get_db_connection()
     cur = con.cursor()
 
@@ -181,21 +197,10 @@ def add_Song(music_file_path: str):
     return name, length
 
 
-# (N) this is just grabbing the path of a Music directory in the current repository that will be used as the
-# default for storing music to be added to the database. cwd is the function to get the current working dir
-music_directory = "Music"
-print(music_directory)
-full_path = os.path.abspath(music_directory)
-print(full_path)
-
-current_dir = os.getcwd()
-print(current_dir)
-
 '''
 (N) function in charge of adding music_files from an entire directory into the database. 
 Referenced from the github repository in references
 '''
-
 
 def add_Dir(music_dir: str = music_directory):
     # (N) making sure the path to the directory with music stored is a valid path
@@ -220,12 +225,13 @@ def add_Dir(music_dir: str = music_directory):
             names.append(
                 name)  # (N) adding the name of the song that was added to a list of names to keep track of songs added
 
-    return n, names  # (N) return the number of songs and the names of the songs that were addes
-
 
 def deleteSong(song_name: str):  # (N) Function that deletes a song from the database
     con = get_db_connection()
+    con = get_db_connection()
     cur = con.cursor()
+    cur.executescript(
+        f'DELETE FROM songs WHERE name = "{song_name}";')  # (N) simple SQL query where it matches the song name and deletes entries based on that
     cur.executescript(
         f'DELETE FROM songs WHERE name = "{song_name}";')  # (N) simple SQL query where it matches the song name and deletes entries based on that
     con.commit()
@@ -233,6 +239,7 @@ def deleteSong(song_name: str):  # (N) Function that deletes a song from the dat
 
 
 def clear_table():  # (N) clears the database by dropping all the tables in the database
+    con = get_db_connection()
     con = get_db_connection()
     cur = con.cursor()
     cur.executescript('''DROP TABLE IF EXISTS artists;
@@ -259,13 +266,12 @@ def add_to_queue(song_name: str):  # (Ja) function that adds a song to the queue
     else:
         print(f" Song: '{song_name}', was not found in the library.")  # (Ja) print a message if the songs not found
 
-        print(
-            f"Error: Song '{song_name}' was not found in the library.")  # (Ja) print a message if the song's not found
+        print(f"Error: Song '{song_name}' was not found in the library.")  # (Ja) print a message if the song's not found
         success = False
 
     cur.close()
     return success
-
+    
 
 @app.route("/api/add_to_queue", methods=["POST"])
 def api_add_to_queue():
@@ -279,8 +285,8 @@ def api_add_to_queue():
         return jsonify({"message": ["success"]}), 200  # (Ja) success response
     else:
         return jsonify({"error": ["song not found"]}), 404  # (Ja) error response, if song not found
-
-
+        
+    
 def remove_from_queue(position: int):  # (Ja) function that removes a song from the queue based on its position
     con = get_db_connection()
     cur = con.cursor()
@@ -291,8 +297,7 @@ def remove_from_queue(position: int):  # (Ja) function that removes a song from 
 
     # (Ja) if the song exists at the position, delete it
     if song_exists:
-        cur.execute("DELETE FROM queue WHERE position = ?",
-                    (position,))  # (Ja) delete the song at the specified position in the queue
+        cur.execute("DELETE FROM queue WHERE position = ?", (position,)) # (Ja) delete the song at the specified position in the queue
         con.commit()
         message = f"Removed song at position {position} from the queue."
         success = True
@@ -305,7 +310,7 @@ def remove_from_queue(position: int):  # (Ja) function that removes a song from 
 
     return {"success": success, "message": message}
 
-
+    
 @app.route("/api/remove_from_queue", methods=["DELETE"])
 def api_remove_from_queue():
     data = request.json  # (Ja) getting the json data from the request
@@ -332,12 +337,12 @@ def get_from_queue():  # (Jo) will retrieve the current queue
 @app.route('/api/queue', methods=['GET'])
 def get_queue():
     queue = get_from_queue()
-    queue_list = [{"position": item[0], "title": item[1]} for item in queue]
+    queue_list = [{"position": item[0],"title": item[1]} for item in queue]
     print(queue)
-
+        
     return jsonify(queue_list), 200
 
-
+    
 @app.route("/api/random_song", methods=[
     "GET"])  # (N) API endpoint for getting a random song that will be used temporarily for the forward and backward buttons
 def get_random_song():  # (N) function for getting a random song
@@ -378,18 +383,18 @@ def get_random_song():  # (N) function for getting a random song
     else:
         return jsonify({"error": "No songs found"}), 404
 
-
+        
 @app.route("/api/song/<song_name>", methods=["GET"])
 def get_song_by_name(song_name):
     con = get_db_connection()
     cur = con.cursor()
-
+    
     cur.execute('''SELECT songs.name, artists.name, albums.name, songs.length, songs.path, songs.cover_art
                    FROM songs
                    LEFT JOIN artists ON songs.artist_id = artists.id
                    LEFT JOIN albums ON songs.album_id = albums.id
                    WHERE songs.name = ?;''', (song_name,))
-
+                   
     song = cur.fetchone()
     cur.close()
     con.close()
@@ -424,6 +429,7 @@ def get_current_song():
     cur.close()
     con.close()
 
+
     # (Ja) if the song is retrieved from the query, return its details
     if current_song:  # (N) use jsonify to give all of the information in JSON response format so that it can be accessed by the frontend
         return jsonify({
@@ -446,7 +452,7 @@ def serve_audio(filename):
     return send_file(file_path)
 
 
-@app.route('/api/all_songs',
+@app.route('/api/all_songs', 
            methods=['GET'])
 def get_all_songs():
     con = get_db_connection()
@@ -460,7 +466,7 @@ def get_all_songs():
     get_all_songs = cur.fetchall()
     cur.close()
     con.close()
-
+    
     # (N) Format the result as a list of dictionaries for JSON serialization
     if get_all_songs:
         songs = []
@@ -474,7 +480,7 @@ def get_all_songs():
                 "cover_art": song[5]
             }
             songs.append(song_obj)
-
+            
         return jsonify(songs), 200
     else:
         return jsonify({"message": "No songs in library!"}), 404
@@ -483,7 +489,7 @@ def get_all_songs():
 @app.route('/api/cover_art/<path:filename>')
 def serve_cover_art(filename):
     return send_file(f'cover_art/{filename}')
-
+    
 
 @app.route('/api/upload_file', methods=['POST'])
 def upload_file():
@@ -500,6 +506,110 @@ def upload_file():
     return jsonify({"message": f"File {file.filename} has been uploaded successfully"}), 200
 
 
+def token_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        token = None
+
+        # (Ja) JWT is expected in the authorization header
+        if 'Authorization' in request.headers:
+            parts = request.headers['Authorization'].split()
+            # (Ja) token should follow "Bearer <token>" format
+            if len(parts) == 2 and parts[0] == 'Bearer':
+                token = parts[1]
+
+        # (Ja) return error if token is missing
+        if not token:
+            return jsonify({'error': 'Token is missing!'}), 401
+
+        try:
+            # (Ja) decode JWT to retrieve the user information
+            data = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+            current_user = data['username']
+        except jwt.ExpiredSignatureError:
+            # (Ja) return error if token has expired
+            return jsonify({'error': 'Token has expired!'}), 401
+        except jwt.InvalidTokenError:
+            # (Ja) return error if token is invalid
+            return jsonify({'error': 'Invalid token!'}), 401
+
+        # (Ja) call the decorated function with current_user
+        return f(current_user, *args, **kwargs)
+
+    return decorated
+
+
+@app.route('/api/register', methods=['POST'])
+def register():
+    data = request.get_json()
+
+    # (Ja) check if username and password are provided
+    if not data or not 'username' in data or not 'password' in data:
+        return jsonify({"error": "Username and password required"}), 400
+
+    username = data['username']
+    password = data['password']
+
+    # (Ja) hash the password
+    password_hash = generate_password_hash(password)
+
+    try:
+        con = get_db_connection()
+        cur = con.cursor()
+        # (Ja) insert new user into the database
+        cur.execute("INSERT INTO users (username, password_hash) VALUES (?, ?)", (username, password_hash))
+        con.commit()
+        cur.close()
+        return jsonify({"message": "User registered successfully"}), 201
+    except sql.IntegrityError:
+        # (Ja) return error if username already exists
+        return jsonify({"error": "Username already exists"}), 409
+    finally:
+        con.close()
+
+
+@app.route('/api/login', methods=['POST'])
+def login():
+    data = request.get_json()
+
+    # (Ja) check if username and password are provided
+    if not data or not 'username' in data or not 'password' in data:
+        return jsonify({"error": "Username and password required"}), 400
+
+    username = data['username']
+    password = data['password']
+
+    con = get_db_connection()
+    cur = con.cursor()
+    # (Ja) retrieve password hash for the provided username
+    cur.execute("SELECT password_hash FROM users WHERE username = ?", (username,))
+    user = cur.fetchone()
+    cur.close()
+    con.close()
+
+    # (Ja) check if password matches hash in database
+    if user and check_password_hash(user[0], password):
+        # (Ja) generate JWT token valid for 24 hours
+        token = jwt.encode({
+            'username': username,
+            'exp': datetime.utcnow() + timedelta(hours=24)
+        }, SECRET_KEY, algorithm="HS256")
+        return jsonify({'token': token}), 200
+    else:
+        # (Ja) return error if username or password is invalid
+        return jsonify({"error": "Invalid username or password"}), 401
+
+
+@app.route("/api/test_entry", methods=["GET"])
+@token_required
+def test_entry(current_user):
+    # (Ja) generate response with custom message for authenticated user
+    test_data = {
+        "message": f"Hello, {current_user}! This is a test entry."
+    }
+    return jsonify(test_data), 200
+
+
 def main():  # (N) simple function that is creating the database and adding the songs from the default path (Music directory contained in the repository)
     print("adding songs to database")
     clear_table()
@@ -512,16 +622,16 @@ def main():  # (N) simple function that is creating the database and adding the 
     song_names = [row[0] for row in cur.fetchall()]
     cur.close()
     print(f"Added {len(song_names)} songs to the database.")
-    add_to_queue(song_names[0])
-    for song in song_names:  # (Jo) Adds songs to the queue
-        add_to_queue(song)
-        # print("Current Queue after adding songs:", get_from_queue())
-        # remove_from_queue(1)
-        # print("Updated Queue after removal:", get_from_queue())
+    if song_names:
+        add_to_queue(song_names[0])
+        for song in song_names:  # (Jo) Adds songs to the queue
+            add_to_queue(song)
     if not song_names:
         print("No songs were found in the specified directory.")
     print(get_from_queue())
     con.close()
 
 
-main()
+if __name__ == "__main__":
+    main()
+    app.run(debug=True)
