@@ -14,6 +14,9 @@ import { useState, useEffect, useMemo } from 'react';
 import { useQueue } from '../../context/QueueContext';
 import './QueueManager.css';
 
+import uploadButtonLogo from '../../assets/uploadbutton.svg'
+import defaultImage from '../../assets/default.png';
+
 /*
 Meant to handle the queue management and keep Player separate and complete enough. As a result of Player splitting,
 we use a QueueContext to handle states between the two components. QueueManager manages the library display and the 
@@ -56,6 +59,29 @@ function QueueManager({ children }) {
         fetchAvailableSongs();
     }, []);
 
+
+    const handleFileUpload = async (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            const response = await fetch('http://127.0.0.1:5000/api/upload_file', { method: 'POST', body: formData });
+
+            if (!response.ok) {
+                throw new Error('Upload failed');
+            }
+
+            const updatedLibrary = await fetch('http://127.0.0.1:5000/api/all_songs');
+            const data = await updatedLibrary.json();
+            setAvailableSongs(data);
+        } catch (err) {
+            console.error(err);
+        }
+    };
+
     /*
     Whenever we move forward in the queue, we update the queue on our end. 
     */
@@ -64,7 +90,7 @@ function QueueManager({ children }) {
             await fetchQueue();
         };
         updateQueue();
-    }, [currentQueuePosition]); 
+    }, [currentQueuePosition]);
 
     /*
     Add songs to the shared queue and interface with the context when adding a song. 
@@ -85,7 +111,7 @@ function QueueManager({ children }) {
     */
     useEffect(() => {
         fetchQueue();
-    }, []); 
+    }, []);
 
     /*
     Remove songs from the shared queue
@@ -93,7 +119,7 @@ function QueueManager({ children }) {
     const handleRemoveFromQueue = async (position) => {
         try {
             await removeFromQueue(position);
-            await fetchQueue();  
+            await fetchQueue();
         } catch (err) {
             console.error(err);
         }
@@ -103,12 +129,18 @@ function QueueManager({ children }) {
     return (
         <div className="queue-manager">
             <div className="library-section">
-                <h2>Library</h2>
+                <div className="library-header">
+                    <h2>Library</h2>
+                    <div>
+                        <input type="file" id="file-upload" className="upload-input" onChange={handleFileUpload} accept="audio/*"/>
+                        <label htmlFor="file-upload" className="upload-button"><img src={uploadButtonLogo} className="upload-icon"/></label>
+                    </div>
+                </div>
                 <div className="available-songs">
                     {availableSongs.map((song) => (
                         <div key={`library-${song.id}-${song.title}`} className="song-item">
                             <div className="song-info">
-                                <img src={`http://127.0.0.1:5000/api/cover_art/${song.cover_art.split('/').pop()}`} alt={song.title} className="song-cover"/>
+                                <img src={song.cover_art ? `http://127.0.0.1:5000/api/cover_art/${song.cover_art.split('/').pop()}` : defaultImage} alt={song.title} className="song-cover" />
                                 <div className="song-details">
                                     <h3>{song.title}</h3>
                                     <p>{song.artist}</p>

@@ -3,26 +3,26 @@
     display: flex;
     flex-direction: column;
     /*gap: 2rem;*/
-  }
-  
-  .library-section {
+}
+
+.library-section {
     width: 100%;
-  }
-  
-  .library-section h2 {
+}
+
+.library-section h2 {
     text-align: left;
     margin-bottom: 1rem;
-  }
-  
-  .available-songs {
+}
+
+.available-songs {
     display: grid;
     gap: 1rem;
     max-height: 400px;
     overflow-y: auto;
     padding-right: 1rem;
-  }
-  
-  .song-item {
+}
+
+.song-item {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -31,28 +31,28 @@
     border-radius: 8px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     text-align: left;
-  }
-  
-  .queue-section {
+}
+
+.queue-section {
     width: 100%;
-  }
-  
-  .queue-section h2 {
+}
+
+.queue-section h2 {
     text-align: left;
     margin-bottom: 1rem;
     font-size: 20px;
-  }
-  
-  .queue-list {
+}
+
+.queue-list {
     display: flex;
     overflow-x: auto;
     gap: 1rem;
     padding-bottom: 1rem;
     margin-right: 1rem;
     scroll-behavior: smooth;
-  }
-  
-  .queue-item {
+}
+
+.queue-item {
     flex-shrink: 0;
     background: white;
     padding: 1rem;
@@ -60,43 +60,44 @@
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     display: flex;
     /*flex-direction: column; */
-  }
-  
-  .queue-item.current-song {
+}
+
+.queue-item.current-song {
     background-color: #f0f0ff;
     border: 2px solid #9747ff;
-  }
-  
-  .song-info {
+}
+
+.song-info {
     display: flex;
     align-items: center;
     gap: 1rem;
-  }
-  
-  .song-cover {
+}
+
+.song-cover {
     width: 50px;
     height: 50px;
     object-fit: cover;
     border-radius: 4px;
-  }
-  
-  .song-details {
+}
+
+.song-details {
     flex: 1;
-  }
-  
-  .song-details h3 {
-    margin: 0;
-    font-size: 0.9rem;
-    font-weight: 600;
-  }
-  
-  .song-details p {
+}
+
+.song-details h3 {
     margin: 0;
     font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.song-details p {
+    margin: 0;
+    font-size: 0.7rem;
     color: #666;
-  }
-  
-  .add-button, .remove-button {
+}
+
+.add-button,
+.remove-button {
     padding: 0.5rem;
     border: none;
     background: none;
@@ -104,26 +105,59 @@
     font-size: 1.2rem;
     color: #666;
     transition: color 0.2s;
-  }
-  
-  .add-button:hover, .remove-button:hover {
+}
+
+.add-button:hover,
+.remove-button:hover {
     color: #9747ff;
-  }
-  
-  .queue-list::-webkit-scrollbar {
+}
+
+.queue-list::-webkit-scrollbar {
     height: 6px;
-  }
-  
-  .queue-list::-webkit-scrollbar-track {
+}
+
+.queue-list::-webkit-scrollbar-track {
     background: #f1f1f1;
     border-radius: 3px;
-  }
-  
-  .queue-list::-webkit-scrollbar-thumb {
+}
+
+.queue-list::-webkit-scrollbar-thumb {
     background: #9747ff;
     border-radius: 3px;
-  }
-  
-  .queue-list::-webkit-scrollbar-thumb:hover {
+}
+
+.queue-list::-webkit-scrollbar-thumb:hover {
     background: #7c3dd6;
-  }
+}
+
+.library-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.upload-button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.3s ease, opacity 0.2s linear;
+}
+
+.upload-button:hover {
+    transform: scale(1.2);
+    opacity: 50%;
+}
+
+.upload-icon {
+    width: 18px;
+    height: 18px;
+    padding-right: 20px;
+}
+
+.upload-input {
+    display: none;
+}
