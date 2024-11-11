@@ -59,7 +59,6 @@ taken from the github referenced in sources.
 
 def create_table():
     con = get_db_connection()
-    con = get_db_connection()
     cur = con.cursor()  # (N) create a cursor object that allows you to execute SQL commands
 
     '''(N) this sql command will create the tables for artists, albums, and songs. 
@@ -123,7 +122,6 @@ def create_table():
 
 # (N) Function in charge of adding a single song to the database
 def add_Song(music_file_path: str):
-    con = get_db_connection()
     con = get_db_connection()
     cur = con.cursor()
 
@@ -352,7 +350,6 @@ def get_random_song():  # (N) function for getting a random song
     if song_ids:
         random_song_id = random.choice(song_ids)  # (N) grab a random song id and then add that song into the queue
         # cur.execute("INSERT INTO queue (song_id) VALUES (?)", (random_song_id,))
-        con.commit()
 
     # (N) get all the relevant metadata from that song
     cur.execute('''SELECT songs.name, artists.name AS artist, albums.name AS album, 
