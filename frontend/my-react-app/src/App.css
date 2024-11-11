@@ -44,3 +44,25 @@
 body {
   background-color: #fafafa; 
 }
+
+.main-container {
+  display: flex;
+  gap: 2rem;
+  padding: 2rem;
+  max-width: 1280px;
+  margin: 0 auto;
+  margin-top: 40px; 
+}
+
+.queue-section {
+  flex: 1;
+  max-width: 350px; 
+}
+
+.player-section {
+  width: 400px;
+  position: sticky;
+  top: 60px;
+  height: fit-content;
+  align-self: center;
+}
