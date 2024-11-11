@@ -198,7 +198,7 @@ def add_Song(music_file_path: str):
 Referenced from the github repository in references
 '''
 
-def add_Dir(music_dir: str = music_dir):
+def add_Dir(music_dir: str = music_directory):
     # (N) making sure the path to the directory with music stored is a valid path
     if not os.path.isdir(music_dir):
         raise ValueError("Not a valid directory")
