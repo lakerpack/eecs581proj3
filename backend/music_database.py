@@ -36,9 +36,6 @@ import jwt
 from datetime import datetime, timedelta
 from functools import wraps
 
-app = Flask(__name__)
-CORS(app)
-
 # (Ja) Secret key for JWT
 SECRET_KEY = 'eecs581'
 
@@ -61,7 +58,6 @@ taken from the github referenced in sources.
 
 
 def create_table():
-    con = get_db_connection()
     con = get_db_connection()
     cur = con.cursor()  # (N) create a cursor object that allows you to execute SQL commands
 
@@ -127,7 +123,6 @@ def create_table():
 # (N) Function in charge of adding a single song to the database
 def add_Song(music_file_path: str):
     con = get_db_connection()
-    con = get_db_connection()
     cur = con.cursor()
 
     # (N) check if the actual music file exists and if it does not then return nothing and print out an error
@@ -168,6 +163,7 @@ def add_Song(music_file_path: str):
         # (N) if that is the case then it will try to extract the name from the path instead
         name = os.path.basename(music_file_path).split(".")[0]
 
+    # (N) grabbing the cover art from the metadata of the music file
     cover_art_path = None
     try:
         audio = MP3(music_file_path, ID3=ID3)
@@ -175,7 +171,7 @@ def add_Song(music_file_path: str):
             album_cover = audio.tags['APIC:'].data
             cover_art_path = f'./cover_art/{album}.jpg'
 
-            # Save cover art only if it doesn't already exist
+            # (N) Saving cover art only if it doesn't already exist for the album
             if not os.path.exists(cover_art_path):
                 os.makedirs('./cover_art', exist_ok=True)
                 with open(cover_art_path, 'wb') as img:
@@ -202,7 +198,7 @@ def add_Song(music_file_path: str):
 Referenced from the github repository in references
 '''
 
-def add_Dir(music_dir: str = music_directory):
+def add_Dir(music_dir: str = music_dir):
     # (N) making sure the path to the directory with music stored is a valid path
     if not os.path.isdir(music_dir):
         raise ValueError("Not a valid directory")
@@ -354,7 +350,6 @@ def get_random_song():  # (N) function for getting a random song
     if song_ids:
         random_song_id = random.choice(song_ids)  # (N) grab a random song id and then add that song into the queue
         # cur.execute("INSERT INTO queue (song_id) VALUES (?)", (random_song_id,))
-        con.commit()
 
     # (N) get all the relevant metadata from that song
     cur.execute('''SELECT songs.name, artists.name AS artist, albums.name AS album, 
@@ -491,7 +486,9 @@ def serve_cover_art(filename):
     
 
 @app.route('/api/upload_file', methods=['POST'])
-def upload_file():
+def upload_file(): #(N) Function in charge of taking files uploaded from the front end and putting them in the music folder
+
+    #(N) doing some checks to make sure that the file exists and that there is an actual file selected
     if 'file' not in request.files:
         return jsonify({"error": "No file part in the request available"})
 
@@ -500,6 +497,7 @@ def upload_file():
     if file.filename == '':
         return jsonify({"error": "No selected file"}), 400
 
+    #(N) if that is the case then we will save the file to the "Music" folder and then add it to the database
     file.save(os.path.join("Music", file.filename))
     add_Dir()
     return jsonify({"message": f"File {file.filename} has been uploaded successfully"}), 200
