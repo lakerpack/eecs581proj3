@@ -36,11 +36,11 @@ import jwt
 from datetime import datetime, timedelta
 from functools import wraps
 
-# (Ja) Secret key for JWT
-SECRET_KEY = 'eecs581'
-
 app = Flask(__name__)
 CORS(app)
+
+# (Ja) Secret key for JWT
+SECRET_KEY = 'eecs581'
 
 # (N) this specifies the path for the music_library.db fill that will contain the database
 db_path = os.path.dirname(
