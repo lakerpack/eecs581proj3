@@ -36,6 +36,11 @@ import sqlite3 as sql
 from tinytag import TinyTag
 import random
 
+from werkzeug.security import generate_password_hash, check_password_hash
+import jwt
+from datetime import datetime, timedelta
+from functools import wraps
+
 app = Flask(__name__)
 CORS(app)
 
@@ -103,6 +108,12 @@ def create_table():
                 position INTEGER PRIMARY KEY AUTOINCREMENT,
                 song_id INTEGER,
                 FOREIGN KEY (song_id) REFERENCES songs(id) ON DELETE CASCADE);
+
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT NOT NULL UNIQUE,
+                password_hash TEXT NOT NULL
+            );
             ''')
 
     con.commit()
@@ -500,6 +511,109 @@ def upload_file():
     return jsonify({"message": f"File {file.filename} has been uploaded successfully"}), 200
 
 
+def token_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        token = None
+
+        # (Ja) JWT is expected in the authorization header
+        if 'Authorization' in request.headers:
+            parts = request.headers['Authorization'].split()
+            # (Ja) token should follow "Bearer <token>" format
+            if len(parts) == 2 and parts[0] == 'Bearer':
+                token = parts[1]
+
+        # (Ja) return error if token is missing
+        if not token:
+            return jsonify({'error': 'Token is missing!'}), 401
+
+        try:
+            # (Ja) decode JWT to retrieve the user information
+            data = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+            current_user = data['username']
+        except jwt.ExpiredSignatureError:
+            # (Ja) return error if token has expired
+            return jsonify({'error': 'Token has expired!'}), 401
+        except jwt.InvalidTokenError:
+            # (Ja) return error if token is invalid
+            return jsonify({'error': 'Invalid token!'}), 401
+
+        # (Ja) call the decorated function with current_user
+        return f(current_user, *args, **kwargs)
+
+    return decorated
+
+@app.route('/api/register', methods=['POST'])
+def register():
+    data = request.get_json()
+
+    # (Ja) check if username and password are provided
+    if not data or not 'username' in data or not 'password' in data:
+        return jsonify({"error": "Username and password required"}), 400
+
+    username = data['username']
+    password = data['password']
+
+    # (Ja) hash the password
+    password_hash = generate_password_hash(password)
+
+    try:
+        con = get_db_connection()
+        cur = con.cursor()
+        # (Ja) insert new user into the database
+        cur.execute("INSERT INTO users (username, password_hash) VALUES (?, ?)", (username, password_hash))
+        con.commit()
+        cur.close()
+        return jsonify({"message": "User registered successfully"}), 201
+    except sql.IntegrityError:
+        # (Ja) return error if username already exists
+        return jsonify({"error": "Username already exists"}), 409
+    finally:
+        con.close()
+
+
+@app.route('/api/login', methods=['POST'])
+def login():
+    data = request.get_json()
+
+    # (Ja) check if username and password are provided
+    if not data or not 'username' in data or not 'password' in data:
+        return jsonify({"error": "Username and password required"}), 400
+
+    username = data['username']
+    password = data['password']
+
+    con = get_db_connection()
+    cur = con.cursor()
+    # (Ja) retrieve password hash for the provided username
+    cur.execute("SELECT password_hash FROM users WHERE username = ?", (username,))
+    user = cur.fetchone()
+    cur.close()
+    con.close()
+
+    # (Ja) check if password matches hash in database
+    if user and check_password_hash(user[0], password):
+        # (Ja) generate JWT token valid for 24 hours
+        token = jwt.encode({
+            'username': username,
+            'exp': datetime.utcnow() + timedelta(hours=24)
+        }, SECRET_KEY, algorithm="HS256")
+        return jsonify({'token': token}), 200
+    else:
+        # (Ja) return error if username or password is invalid
+        return jsonify({"error": "Invalid username or password"}), 401
+
+
+@app.route("/api/test_entry", methods=["GET"])
+@token_required
+def test_entry(current_user):
+    # (Ja) generate response with custom message for authenticated user
+    test_data = {
+        "message": f"Hello, {current_user}! This is a test entry."
+    }
+    return jsonify(test_data), 200
+    
+
 def main():  # (N) simple function that is creating the database and adding the songs from the default path (Music directory contained in the repository)
     print("adding songs to database")
     clear_table()
@@ -512,7 +626,6 @@ def main():  # (N) simple function that is creating the database and adding the 
     song_names = [row[0] for row in cur.fetchall()]
     cur.close()
     print(f"Added {len(song_names)} songs to the database.")
-    add_to_queue(song_names[0])
     for song in song_names[:4+1]:  # (Jo) Adds songs to the queue
         add_to_queue(song)
         # print("Current Queue after adding songs:", get_from_queue())
