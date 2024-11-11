@@ -84,7 +84,10 @@ export function QueueProvider({ children }) {
     useEffect(() => {
         if (queue.length > 0 && currentQueuePosition !== null) {
             const updatedQueue = queue.filter(song => song.position >= currentQueuePosition);
-            if (updatedQueue.length !== queue.length) {
+            if (currentQueuePosition > queue[queue.length - 1].position) {
+                setQueue([]);
+            }
+            else if (updatedQueue.length !== queue.length) {
                 setQueue(updatedQueue);
             }
         }

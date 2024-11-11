@@ -78,9 +78,7 @@ function Player() {
 
         await songData.prepareForPlayback();
 
-        if (isPlaying) {
-          await audioRef.current.play();
-        }
+        return audioRef.current;
       }
     } catch (err) {
       console.error(err);
@@ -105,7 +103,7 @@ function Player() {
         audio.pause();
         audio.currentTime = 0;
         audio.src = '';
-        await new Promise(resolve => setTimeout(resolve, 100)); 
+        await new Promise(resolve => setTimeout(resolve, 100));
       }
 
       if (hasNext()) {
@@ -154,7 +152,19 @@ function Player() {
           }
         }
       } else {
-        await fetchSong();
+        if (queue.length > 0) {
+          setCurrentQueuePosition(queue[queue.length - 1].position + 1);
+        }
+        const audio = await fetchSong();
+        if (audio && wasPlaying) {
+          try {
+            await audio.play();
+            setIsPlaying(true);
+          } catch (playError) {
+            console.error("Could not auto-play next random song:", playError);
+            setIsPlaying(false);
+          }
+        }
       }
     } catch (err) {
       console.error("Error in handleNext:", err);
@@ -174,7 +184,7 @@ function Player() {
       if (currentTime > 2) {
         audioRef.current.currentTime = 0;
         setCurrentTime(0);
-      } else if (currentSongIndex > 0) { 
+      } else if (currentSongIndex > 0) {
         const previousSong = songHistory[currentSongIndex - 1];
 
         setSongData(previousSong);
