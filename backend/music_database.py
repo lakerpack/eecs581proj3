@@ -35,14 +35,28 @@ import os
 import sqlite3 as sql
 from tinytag import TinyTag
 import random
-
+from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
 import jwt
 from datetime import datetime, timedelta
 from functools import wraps
+import io
 
 app = Flask(__name__)
 CORS(app)
+
+# (Ja) add key
+app.config['SECRET_KEY'] = 'eecs581'
+
+# (Ja) add configs for upload folder and allowed ext
+app.config['UPLOAD_FOLDER'] = os.path.join(os.getcwd(), 'profile_images')
+app.config['ALLOWED_EXTENSIONS'] = {'png', 'jpg', 'jpeg', 'gif'}
+
+# (Ja) helper function to check allowed ext
+def allowed_file(filename):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
+
 
 # (N) this specifies the path for the music_library.db fill that will contain the database
 db_path = os.path.dirname(
@@ -112,7 +126,10 @@ def create_table():
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 username TEXT NOT NULL UNIQUE,
-                password_hash TEXT NOT NULL
+                password_hash TEXT NOT NULL,
+                name TEXT,
+                description TEXT,
+                profile_image TEXT
             );
             ''')
 
@@ -528,9 +545,27 @@ def token_required(f):
             return jsonify({'error': 'Token is missing!'}), 401
 
         try:
-            # (Ja) decode JWT to retrieve the user information
-            data = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
-            current_user = data['username']
+            data = jwt.decode(token, app.config['SECRET_KEY'], algorithms=["HS256"])
+            user_id = data['user_id']
+            con = get_db_connection()
+            cur = con.cursor()
+            # (Ja) retrieve full user information
+            cur.execute("""
+                SELECT username, name, description, profile_image
+                FROM users WHERE id = ?
+            """, (user_id,))
+            user = cur.fetchone()
+            cur.close()
+            con.close()
+            if not user:
+                return jsonify({'error': 'User not found!'}), 401
+            current_user = {
+                'id': user_id,
+                'username': user[0],
+                'name': user[1],
+                'description': user[2],
+                'profile_image': user[3]
+            }
         except jwt.ExpiredSignatureError:
             # (Ja) return error if token has expired
             return jsonify({'error': 'Token has expired!'}), 401
@@ -550,9 +585,13 @@ def register():
     # (Ja) check if username and password are provided
     if not data or not 'username' in data or not 'password' in data:
         return jsonify({"error": "Username and password required"}), 400
-
+    
+    # (Ja) contributed new fields
     username = data['username']
     password = data['password']
+    name = data.get('name', '')
+    description = data.get('description', '')
+    profile_image = data.get('profile_image', '')
 
     # (Ja) hash the password
     password_hash = generate_password_hash(password)
@@ -560,8 +599,11 @@ def register():
     try:
         con = get_db_connection()
         cur = con.cursor()
-        # (Ja) insert new user into the database
-        cur.execute("INSERT INTO users (username, password_hash) VALUES (?, ?)", (username, password_hash))
+        # (Ja) insert new user into the database, updated fields
+        cur.execute("""
+            INSERT INTO users (username, password_hash, name, description, profile_image)
+            VALUES (?, ?, ?, ?, ?)
+        """, (username, password_hash, name, description, profile_image))
         con.commit()
         cur.close()
         return jsonify({"message": "User registered successfully"}), 201
@@ -586,19 +628,31 @@ def login():
     con = get_db_connection()
     cur = con.cursor()
     # (Ja) retrieve password hash for the provided username
-    cur.execute("SELECT password_hash FROM users WHERE username = ?", (username,))
+    cur.execute("""
+        SELECT id, password_hash, name, description, profile_image
+        FROM users WHERE username = ?
+    """, (username,))
     user = cur.fetchone()
     cur.close()
     con.close()
 
     # (Ja) check if password matches hash in database
-    if user and check_password_hash(user[0], password):
-        # (Ja) generate JWT token valid for 24 hours
+    if user and check_password_hash(user[1], password):
+        # (Ja) generate JWT token valid for 24 hours, update fields
         token = jwt.encode({
+            'user_id': user[0],
             'username': username,
             'exp': datetime.utcnow() + timedelta(hours=24)
-        }, SECRET_KEY, algorithm="HS256")
-        return jsonify({'token': token}), 200
+        }, app.config['SECRET_KEY'], algorithm="HS256")
+        return jsonify({
+            'token': token,
+            'user': {
+                'username': username,
+                'name': user[2],
+                'description': user[3],
+                'profile_image': user[4]
+            }
+        }), 200
     else:
         # (Ja) return error if username or password is invalid
         return jsonify({"error": "Invalid username or password"}), 401
@@ -609,32 +663,199 @@ def login():
 def test_entry(current_user):
     # (Ja) generate response with custom message for authenticated user
     test_data = {
-        "message": f"Hello, {current_user}! This is a test entry."
+        "message": f"Hello, {current_user['name'] or current_user['username']}! This is a test entry.",
+        "user": current_user
     }
     return jsonify(test_data), 200
     
+    
+@app.route('/api/upload_profile_image', methods=['POST'])
+@token_required
+def upload_profile_image(current_user):
+    if 'file' not in request.files:
+        return jsonify({"error": "No file part in the request"}), 400
 
-def main():  # (N) simple function that is creating the database and adding the songs from the default path (Music directory contained in the repository)
-    print("adding songs to database")
-    clear_table()
-    create_table()
-    add_Dir()
+    file = request.files['file']
+
+    if file.filename == '':
+        return jsonify({"error": "No selected file"}), 400
+
+    if file and allowed_file(file.filename):
+        filename = secure_filename(file.filename)
+        # (Ja) create user specific filename to avoid collisions
+        filename = f"user_{current_user['id']}_{filename}"
+        file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        # (Ja) ensure the upload folder exists
+        os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+        file.save(file_path)
+
+        # (Ja) update user's profile_image in the database
+        con = get_db_connection()
+        cur = con.cursor()
+        cur.execute("UPDATE users SET profile_image = ? WHERE id = ?", (file_path, current_user['id']))
+        con.commit()
+        cur.close()
+        con.close()
+
+        return jsonify({"message": "Profile image uploaded successfully", "profile_image": file_path}), 200
+    else:
+        return jsonify({"error": "Invalid file type"}), 400
+        
+
+@app.route('/profile_images/<filename>')
+def serve_profile_image(filename):
+    # (Ja) serve a profile image from the upload folder
+    return send_file(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+    
+
+@app.route('/api/user/profile', methods=['GET'])
+@token_required
+def get_user_profile(current_user):
+    # (Ja) fetch and return the current user's profile details
+    return jsonify({
+        'username': current_user['username'],
+        'name': current_user['name'],
+        'description': current_user['description'],
+        'profile_image': current_user['profile_image']
+    }), 200
+
+
+@app.route('/api/user/profile', methods=['PUT'])
+@token_required
+def update_user_profile(current_user):
+    # (Ja) update the user's name and description in the database
+    data = request.get_json()
+    name = data.get('name', current_user['name'])
+    description = data.get('description', current_user['description'])
 
     con = get_db_connection()
     cur = con.cursor()
-    cur.execute("SELECT name FROM songs")
-    song_names = [row[0] for row in cur.fetchall()]
+    cur.execute("""
+        UPDATE users SET name = ?, description = ?
+        WHERE id = ?
+    """, (name, description, current_user['id']))
+    con.commit()
     cur.close()
-    print(f"Added {len(song_names)} songs to the database.")
-    for song in song_names[:4+1]:  # (Jo) Adds songs to the queue
-        add_to_queue(song)
-        # print("Current Queue after adding songs:", get_from_queue())
-        # remove_from_queue(1)
-        # print("Updated Queue after removal:", get_from_queue())
-    if not song_names:
-        print("No songs were found in the specified directory.")
-    print(get_from_queue())
     con.close()
 
+    current_user['name'] = name
+    current_user['description'] = description
 
-main()
+    return jsonify({
+        'message': 'Profile updated successfully',
+        'user': current_user
+    }), 200
+    
+    
+def add_new_user_columns():
+    con = get_db_connection()
+    cur = con.cursor()
+    try:
+        cur.execute("ALTER TABLE users ADD COLUMN name TEXT;")
+    except sql.OperationalError:
+        pass  # (Ja) column already exists
+
+    try:
+        cur.execute("ALTER TABLE users ADD COLUMN description TEXT;")
+    except sql.OperationalError:
+        pass  # (Ja) column already exists
+
+    try:
+        cur.execute("ALTER TABLE users ADD COLUMN profile_image TEXT;")
+    except sql.OperationalError:
+        pass  # (Ja) column already exists
+
+    con.commit()
+    cur.close()
+
+
+def main(): # (N) simple function that is creating the database and adding the songs from the default path (Music directory contained in the repository)
+    try:
+        print("Setting up the database and adding songs")
+        clear_table()
+        create_table()
+        add_new_user_columns()
+        add_Dir()
+
+        # (Ja) initialize flask test client
+        with app.test_client() as client:
+            # (Ja) test user registration
+            print("\nTesting user registration...")
+            register_response = client.post('/api/register', json={
+                "username": "johndoe",
+                "password": "mypass",
+                "name": "John Doe",
+                "description": "I just be listening to music.",
+                "profile_image": ""  # (Ja) initial registration without image
+            })
+            print("Registration response:", register_response.json)
+
+            # (Ja) check for registration errors
+            if register_response.status_code != 201:
+                print("Registration failed!")
+                return
+
+            # (Ja) test user login
+            print("\nTesting user login...")
+            login_response = client.post('/api/login', json={
+                "username": "johndoe",
+                "password": "mypass"
+            })
+            print("Login response:", login_response.json)
+            if login_response.status_code != 200:
+                print("Login failed, can't proceed w/ further tests")
+                return
+
+            # (Ja) extract the token from login response
+            token = login_response.json['token']
+            headers = {
+                'Authorization': f'Bearer {token}'
+            }
+
+            # (Ja) test accessing a protected route
+            print("\nTesting access to a protected route...")
+            test_entry_response = client.get('/api/test_entry', headers=headers)
+            print("Test entry response:", test_entry_response.json)
+
+            # (Ja) test updating user profile
+            print("\nTesting updating user profile...")
+            update_profile_response = client.put('/api/user/profile', headers=headers, json={
+                "name": "Johnny Doe",
+                "description": "Heres an updated description."
+            })
+            print("Update profile response:", update_profile_response.json)
+
+            # (Ja) optionally test uploading a profile image
+            print("\nTesting profile image upload...")
+            data = {
+                'file': (io.BytesIO(b'This is test image data'), 'profile.jpg')
+            }
+            upload_image_response = client.post('/api/upload_profile_image', headers=headers, content_type='multipart/form-data', data=data)
+            print("Upload image response:", upload_image_response.json)
+
+            # (Ja) test retrieving user profile
+            print("\nTesting retrieving user profile...")
+            get_profile_response = client.get('/api/user/profile', headers=headers)
+            print("Get profile response:", get_profile_response.json)
+
+        con = get_db_connection()
+        cur = con.cursor()
+        cur.execute("SELECT name FROM songs")
+        song_names = [row[0] for row in cur.fetchall()]
+        cur.close()
+        print(f"\nAdded {len(song_names)} songs to the database.")
+        for song in song_names[:5]:  # (Jo) Adds songs to the queue
+            add_to_queue(song)
+            # print("Current Queue after adding songs:", get_from_queue())
+            # remove_from_queue(1)
+            # print("Updated Queue after removal:", get_from_queue())
+        if not song_names:
+            print("No songs were found in the specified directory.")
+        print("Current queue:", get_from_queue())
+        con.close()
+
+    except Exception as e:
+        print(f"An error occurred during execution: {e}")
+        
+if __name__ == "__main__":
+    main()
