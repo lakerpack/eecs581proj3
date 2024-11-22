@@ -1,4 +1,6 @@
-tinytag==1.7.0
 Flask==2.2.2
 flask_cors==5.0.0
 mutagen==1.46.0
+tinytag==1.7.0
+Werkzeug==2.3.7
+PyJWT==2.8.0
