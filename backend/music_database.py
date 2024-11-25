@@ -25,7 +25,7 @@ of python3 by default
 !!!A LOT OF THE PROGRAM WAS TAKEN FROM THE GITHUB PROJECT LISTED AS A SOURCE, WITH SOME MODIFICATIONS
 MADE TO IT BY AUTHORS AND SOME ERROR CHECKING WITH CHATGPT!!!
 '''
-from flask import Flask, jsonify, request, send_file
+from flask import Flask, jsonify, request, send_file, abort
 from mutagen.mp3 import MP3
 from mutagen.id3 import ID3, APIC
 from flask_cors import CORS
@@ -177,17 +177,20 @@ def add_Song(music_file_path: str):
     if not name:
         # (N) if that is the case then it will try to extract the name from the path instead
         name = os.path.basename(music_file_path).split(".")[0]
-
-    cover_art_path = None
+        
+    music_directory = os.path.abspath("Music")
+    relative_path = os.path.relpath(music_file_path, start=music_directory)
+    
     try:
         audio = MP3(music_file_path, ID3=ID3)
         if audio.tags and 'APIC:' in audio.tags:
             album_cover = audio.tags['APIC:'].data
-            cover_art_path = f'./cover_art/{album}.jpg'
+            cover_art_dir = os.path.abspath("cover_art")
+            cover_art_path = os.path.join(cover_art_dir, f"{album}.jpg")
 
             # Save cover art only if it doesn't already exist
             if not os.path.exists(cover_art_path):
-                os.makedirs('./cover_art', exist_ok=True)
+                os.makedirs("cover_art", exist_ok=True)
                 with open(cover_art_path, 'wb') as img:
                     img.write(album_cover)
     except Exception as e:
@@ -199,7 +202,7 @@ def add_Song(music_file_path: str):
                           (SELECT COALESCE((SELECT id FROM albums WHERE name = ?), 0)), 
                           (SELECT COALESCE((SELECT id FROM artists WHERE name = ?), 0)),
                           ?;
-    ''', (name, length, music_file_path, album, artist, cover_art_path))
+    ''', (name, length, relative_path, album, artist, cover_art_path))
 
     con.commit()  # (N) committing changes
     cur.close()
@@ -237,10 +240,6 @@ def add_Dir(music_dir: str = music_directory):
             "mp3"]:  # (N) right now we are only looking at .mp3 files so we are only looking for files with that extension
             n += 1
             print(f'Adding song from: {music_dir}/{file_}')
-            name, _ = add_Song(
-                music_dir + '/' + file_)  # (N) using the add_Song function to add the song using the path of the music file
-            names.append(
-                name)  # (N) adding the name of the song that was added to a list of names to keep track of songs added
             name, _ = add_Song(
                 music_dir + '/' + file_)  # (N) using the add_Song function to add the song using the path of the music file
             names.append(
@@ -467,9 +466,24 @@ def get_current_song():
 
 @app.route('/api/audio/<path:filename>')
 def serve_audio(filename):
-    music_folder = 'C:\\Users\\User\\Desktop\\school.work\\581\\eecs581proj3\\backend'
+    # (Ja) dynamically get the music dir
+    music_folder = os.path.abspath("Music")
+    # (Ja) construct the full file path
     file_path = os.path.join(music_folder, filename)
+    print(f"Requested file path: {file_path}")
+    if not os.path.isfile(file_path):
+        print(f"File not found: {file_path}")
+        abort(404, description="File not found")
     return send_file(file_path)
+
+def clean_up_paths():
+    con = get_db_connection()
+    cur = con.cursor()
+    cur.execute("UPDATE songs SET path = REPLACE(path, 'Music/', '') WHERE path LIKE 'Music/%';")
+    con.commit()
+    cur.close()
+    con.close()
+    print("Database paths cleaned up.")
 
 
 @app.route('/api/all_songs',
@@ -508,7 +522,18 @@ def get_all_songs():
 
 @app.route('/api/cover_art/<path:filename>')
 def serve_cover_art(filename):
-    return send_file(f'cover_art/{filename}')
+    # (Ja) define the base directory for cover art dynamically
+    base_cover_art_folder = os.path.abspath("cover_art")
+    # (Ja) construct the full path to the requested cover art
+    file_path = os.path.join(base_cover_art_folder, filename)
+    # (Ja) log the requested file path for debugging
+    print(f"Requested cover art path - {file_path}")
+    # (Ja) check if the file exists
+    if not os.path.isfile(file_path):
+        print(f"Cover art not found: {file_path}")
+        abort(404, description="Cover art not found")
+    # (Ja) serve the cover art file
+    return send_file(file_path)
 
 
 @app.route('/api/upload_file', methods=['POST'])
@@ -857,4 +882,3 @@ def main(): # (N) simple function that is creating the database and adding the s
         
 main()
 app.run(debug=True)
-
