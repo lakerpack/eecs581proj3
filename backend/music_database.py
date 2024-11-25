@@ -26,10 +26,8 @@ of python3 by default
 MADE TO IT BY AUTHORS AND SOME ERROR CHECKING WITH CHATGPT!!!
 '''
 from flask import Flask, jsonify, request, send_file
-from flask_cors import CORS
 from mutagen.mp3 import MP3
 from mutagen.id3 import ID3, APIC
-from flask import Flask, jsonify, request, send_file
 from flask_cors import CORS
 import os
 import sqlite3 as sql
@@ -857,5 +855,6 @@ def main(): # (N) simple function that is creating the database and adding the s
     except Exception as e:
         print(f"An error occurred during execution: {e}")
         
-if __name__ == "__main__":
-    main()
+main()
+app.run(debug=True)
+
