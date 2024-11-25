@@ -1,0 +1,172 @@
+.profile-modal-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(2px);
+  background-color: rgba(0, 0, 0, 0.75);
+}
+
+.profile-modal {
+  background-color: white;
+  border-radius: 0.5rem;
+  padding: 1.5rem;
+  width: 90%;
+  max-width: 29rem;
+  overflow-y: auto;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.modal-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: rgb(17 24 39);
+}
+
+.close-button {
+  background: none;
+  border: none;
+  color: rgb(107 114 128);
+  cursor: pointer;
+  padding: 0.5rem;
+}
+
+.close-button:hover {
+  color: rgb(17 24 39);
+}
+
+.profile-image-container {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 3rem;
+}
+
+.profile-image-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.profile-image {
+  width: 7rem;
+  height: 7srem;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.image-upload-button {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  background-color: rgb(222, 222, 222);
+  color: white;
+  padding: 0.375rem;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.image-upload-input {
+  display: none;
+}
+
+.profile-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  align-items: center
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 85%;
+}
+
+.field-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: rgb(55 65 81);
+}
+
+.field-input {
+  padding: 0.5rem;
+  border: 1px solid rgb(209 213 219);
+  border-radius: 0.375rem;
+}
+
+.field-input:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(26, 26, 27, 0.25);
+}
+
+.field-textarea {
+  min-height: 10rem;
+  resize: vertical;
+}
+
+.form-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+  padding-left: 185px;
+}
+
+.cancel-button {
+  padding: 0.5rem 1rem;
+  border: 1px solid rgb(209 213 219);
+  border-radius: 0.375rem;
+  background-color: white;
+  color: rgb(55 65 81);
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.cancel-button:hover {
+  background-color: rgb(249 250 251);
+}
+
+.save-button {
+  padding: 0.5rem 1rem;
+  background-color: #fff0f5;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.save-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.status-message {
+  padding: 0.75rem;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  margin-top: 1rem;
+}
+
+.error-message {
+  background-color: rgb(254 242 242);
+  color: rgb(153 27 27);
+}
+
+.success-message {
+  background-color: rgb(240 253 244);
+  color: rgb(22 101 52);
+}
+
+#edit-logo {
+  height: 24px;
+}

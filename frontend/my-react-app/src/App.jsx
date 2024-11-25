@@ -14,24 +14,26 @@ import './App.css'
 import Navbar from './components/Navbar/Navbar'
 import Player from './components/Player/Player'
 import QueueManager from './components/QueueManager/QueueManager'
-import { QueueProvider } from './context/QueueContext' 
+import { QueueProvider } from './context/QueueContext'
+import { AuthProvider } from './components/Auth/Auth'
 
 function App() {
     return (
-        <QueueProvider>
-            <div>
-                <Navbar/>
-                <div className="main-container">
-                    <div className="queue-section">
-                        <QueueManager />
-                    </div>
-                    <div className="player-section">
-                        <Player/>
+        <AuthProvider>
+            <QueueProvider>
+                <div>
+                    <Navbar />
+                    <div className="main-container">
+                        <div className="queue-section">
+                            <QueueManager />
+                        </div>
+                        <div className="player-section">
+                            <Player />
+                        </div>
                     </div>
                 </div>
-            </div>
-        </QueueProvider>
+            </QueueProvider>
+        </AuthProvider>
     );
 }
-
 export default App
