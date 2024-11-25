@@ -11,9 +11,11 @@
   will-change: filter;
   transition: filter 300ms;
 }
+
 .logo:hover {
   filter: drop-shadow(0 0 2em #646cffaa);
 }
+
 .logo.react:hover {
   filter: drop-shadow(0 0 2em #61dafbaa);
 }
@@ -22,6 +24,7 @@
   from {
     transform: rotate(0deg);
   }
+
   to {
     transform: rotate(360deg);
   }
@@ -42,7 +45,7 @@
 }
 
 body {
-  background-color: #fafafa; 
+  background-color: #fafafa;
 }
 
 .main-container {
@@ -51,17 +54,16 @@ body {
   padding: 2rem;
   max-width: 1280px;
   margin: 0 auto;
-  margin-top: 40px; 
+  margin-top: 40px;
 }
 
 .queue-section {
   flex: 1;
-  max-width: 350px; 
+  max-width: 350px;
 }
 
 .player-section {
   width: 400px;
-  position: sticky;
   top: 60px;
   height: fit-content;
   align-self: center;
