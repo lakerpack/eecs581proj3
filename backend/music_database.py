@@ -117,9 +117,12 @@ def create_table():
             INSERT OR IGNORE INTO albums(id,name) VALUES (0,"UNKNOWN");
             
             CREATE TABLE IF NOT EXISTS queue (
-                position INTEGER PRIMARY KEY AUTOINCREMENT,
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                position INTEGER NOT NULL,
                 song_id INTEGER,
-                FOREIGN KEY (song_id) REFERENCES songs(id) ON DELETE CASCADE);
+                FOREIGN KEY (song_id) REFERENCES songs(id) ON DELETE CASCADE,
+                UNIQUE(position)
+            );
 
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -128,6 +131,15 @@ def create_table():
                 name TEXT,
                 description TEXT,
                 profile_image TEXT
+            );
+            
+            CREATE TABLE IF NOT EXISTS favorites (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                song_id INTEGER NOT NULL,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                FOREIGN KEY (song_id) REFERENCES songs(id) ON DELETE CASCADE,
+                UNIQUE (user_id, song_id)
             );
             ''')
 
@@ -276,8 +288,10 @@ def add_to_queue(song_name: str):  # (Ja) function that adds a song to the queue
 
     if song:
         song_id = song[0]  # (Ja) extract the song id from the fetched result
-        cur.execute("INSERT INTO queue (song_id) VALUES (?)",
-                    (song_id,))  # (Ja) insert the song id into the queue table
+        cur.execute("SELECT MAX(position) FROM queue")
+        max_position = cur.fetchone()[0] or 0
+        new_position = max_position + 1
+        cur.execute("INSERT INTO queue (position, song_id) VALUES (?, ?)", (new_position, song_id))
         con.commit()
         print(f"Added '{song_name}' to the queue.")
         success = True
@@ -318,6 +332,11 @@ def remove_from_queue(position: int):  # (Ja) function that removes a song from 
     if song_exists:
         cur.execute("DELETE FROM queue WHERE position = ?",
                     (position,))  # (Ja) delete the song at the specified position in the queue
+        cur.execute("""
+            UPDATE queue
+            SET position = position - 1
+            WHERE position > ?
+        """, (position,))
         con.commit()
         message = f"Removed song at position {position} from the queue."
         success = True
@@ -790,7 +809,150 @@ def add_new_user_columns():
 
     con.commit()
     cur.close()
+    
+@app.route('/api/favorites', methods=['GET'])
+@token_required
+def get_favorites(current_user):
+    con = get_db_connection()
+    cur = con.cursor()
 
+    # (Ja) get favorite songs for the current user
+    cur.execute('''
+        SELECT songs.id, songs.name, artists.name AS artist, albums.name AS album, 
+               songs.length, songs.path, songs.cover_art 
+        FROM favorites
+        JOIN songs ON favorites.song_id = songs.id
+        LEFT JOIN artists ON songs.artist_id = artists.id
+        LEFT JOIN albums ON songs.album_id = albums.id
+        WHERE favorites.user_id = ?
+        ORDER BY songs.name ASC
+    ''', (current_user['id'],))
+    favorites = cur.fetchall()
+    cur.close()
+    con.close()
+
+    if favorites:
+        songs = []
+        for song in favorites:
+            song_obj = {
+                "id": song[0],
+                "title": song[1] or "Unknown Title",
+                "artist": song[2] or "Unknown Artist",
+                "album": song[3] or "Unknown Album",
+                "length": song[4] or "Unknown Length",
+                "path": song[5],
+                "cover_art": song[6]
+            }
+            songs.append(song_obj)
+
+        return jsonify(songs), 200
+    else:
+        return jsonify({"message": "No favorite songs"}), 200
+
+# (Ja) endpoint for searching songs
+@app.route('/api/search', methods=['GET'])
+def search_songs():
+    query = request.args.get('q', '')
+
+    con = get_db_connection()
+    cur = con.cursor()
+
+    # (Ja) search in songs.name, artists.name, albums.name
+    search_query = f"%{query}%"
+    cur.execute('''
+        SELECT songs.id, songs.name, artists.name AS artist, albums.name AS album, 
+               songs.length, songs.path, songs.cover_art 
+        FROM songs
+        LEFT JOIN artists ON songs.artist_id = artists.id
+        LEFT JOIN albums ON songs.album_id = albums.id
+        WHERE songs.name LIKE ? OR artists.name LIKE ? OR albums.name LIKE ?
+        ORDER BY songs.name ASC
+    ''', (search_query, search_query, search_query))
+    results = cur.fetchall()
+    cur.close()
+    con.close()
+
+    if results:
+        songs = []
+        for song in results:
+            song_obj = {
+                "id": song[0],
+                "title": song[1] or "Unknown Title",
+                "artist": song[2] or "Unknown Artist",
+                "album": song[3] or "Unknown Album",
+                "length": song[4] or "Unknown Length",
+                "path": song[5],
+                "cover_art": song[6]
+            }
+            songs.append(song_obj)
+
+        return jsonify(songs), 200
+    else:
+        return jsonify({"message": "No matching songs found"}), 200
+
+# (Ja) endpoint to move songs in the queue
+@app.route('/api/queue/move', methods=['PUT'])
+def move_song_in_queue():
+    data = request.get_json()
+    from_position = data.get('from_position')
+    to_position = data.get('to_position')
+
+    if from_position is None or to_position is None:
+        return jsonify({"error": "Both 'from_position' and 'to_position' are required"}), 400
+
+    con = get_db_connection()
+    cur = con.cursor()
+
+    # (Ja) check if the positions are valid
+    cur.execute("SELECT song_id FROM queue WHERE position = ?", (from_position,))
+    row = cur.fetchone()
+    if not row:
+        cur.close()
+        con.close()
+        return jsonify({"error": f"No song found at position {from_position}"}), 404
+
+    song_id = row[0]
+
+    # (Ja) begin a transaction
+    con.execute("BEGIN")
+
+    try:
+        # (Ja) if moving down the queue (to higher position number)
+        if from_position < to_position:
+            # (Ja) decrease the positions of songs between from_position +1 and to_position inclusive
+            cur.execute("""
+                UPDATE queue
+                SET position = position -1
+                WHERE position > ? AND position <= ?
+            """, (from_position, to_position))
+        elif from_position > to_position:
+            # (Ja) increase the positions of songs between to_position and from_position -1 inclusive
+            cur.execute("""
+                UPDATE queue
+                SET position = position +1
+                WHERE position >= ? AND position < ?
+            """, (to_position, from_position))
+        else:
+            # (Ja) from_position == to_position, nothing to do
+            return jsonify({"message": "Song is already at the desired position"}), 200
+
+        # (Ja) update the position of the song
+        cur.execute("""
+            UPDATE queue
+            SET position = ?
+            WHERE song_id = ?
+        """, (to_position, song_id))
+
+        con.commit()
+    except Exception as e:
+        con.rollback()
+        cur.close()
+        con.close()
+        return jsonify({"error": f"An error occurred: {e}"}), 500
+
+    cur.close()
+    con.close()
+    return jsonify({"message": f"Moved song from position {from_position} to {to_position}"}), 200
 
 def main(): # (N) simple function that is creating the database and adding the songs from the default path (Music directory contained in the repository)
     try:
